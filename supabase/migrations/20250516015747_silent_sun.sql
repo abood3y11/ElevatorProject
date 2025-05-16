@@ -19,7 +19,7 @@ INSERT INTO auth.users (
   '00000000-0000-0000-0000-000000000000',
   gen_random_uuid(),
   'authenticated',
-  'admin',
+  'authenticated',
   'admin@elevatorapp.com',
   crypt('Admin123!', gen_salt('bf')),
   now(),

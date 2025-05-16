@@ -1,17 +1,3 @@
-/*
-  # Add Roles and Policies
-
-  1. Changes
-    - Add role enum type for user roles
-    - Add role column to profiles table
-    - Create policies for different user roles
-    - Update existing admin user role
-
-  2. Security
-    - Enable RLS on profiles table
-    - Add policies for role-based access
-*/
-
 -- Create role enum if it doesn't exist
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('customer', 'employee', 'admin');
