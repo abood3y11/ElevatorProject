@@ -1,7 +1,7 @@
 /*
-  # Create Admin User
-
-  1. Creates an admin user in auth.users table
+  # Create Admin User and Profile
+  
+  1. Creates an admin user in auth.users
   2. Creates corresponding profile in profiles table
   3. Sets proper role and metadata
 */
@@ -41,6 +41,23 @@ INSERT INTO auth.users (
   ''
 );
 
+-- Fix handle_new_user function to not use email column
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, role, name)
+  VALUES (
+    new.id,
+    COALESCE(
+      (new.raw_user_meta_data->>'role')::user_role,
+      'customer'::user_role
+    ),
+    COALESCE(new.raw_user_meta_data->>'name', 'Anonymous')
+  );
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Create profile for admin user
 DO $$ 
 DECLARE 
@@ -49,22 +66,25 @@ BEGIN
   -- Get the ID of the admin user we just created
   SELECT id INTO admin_id 
   FROM auth.users 
-  WHERE email = 'admin@elevatorapp.com';
+  WHERE email = 'admin@elevatorapp.com'
+  ORDER BY created_at DESC
+  LIMIT 1;
 
-  -- Create the profile
+  -- Create the profile if it doesn't exist
   INSERT INTO public.profiles (
     id,
     name,
     role,
-    phone,
     created_at,
     updated_at
   ) VALUES (
     admin_id,
     'System Administrator',
-    'management',
-    null,
+    'admin',
     now(),
     now()
-  );
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET role = 'admin',
+      updated_at = now();
 END $$;
