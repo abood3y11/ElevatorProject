@@ -74,6 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+<<<<<<< HEAD
     console.log('AuthProvider initializing');
     
     // Setup auth state
@@ -134,15 +135,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authStateSubscription.current) {
         authStateSubscription.current.unsubscribe();
       }
+=======
+    let mounted = true;
+
+    // Initialize the session
+    const initializeSession = async () => {
+      try {
+        // Get the initial session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          return;
+        }
+
+        if (session?.user && mounted) {
+          await fetchProfile(session.user);
+        }
+      } catch (error) {
+        console.error('Error initializing session:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (mounted) {
+        if (session?.user) {
+          await fetchProfile(session.user);
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+>>>>>>> f5774393b6fa126968ef3dca89f033985d81a973
     };
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
+<<<<<<< HEAD
       console.log('Attempting login for:', email);
       setLoading(true);
       
       const { data, error } = await supabase.auth.signInWithPassword({
+=======
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+>>>>>>> f5774393b6fa126968ef3dca89f033985d81a973
         email,
         password,
       });
@@ -152,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         throw error;
       }
+<<<<<<< HEAD
       
       console.log('Login successful, auth response received');
       
@@ -159,6 +210,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       
       return data;
+=======
+
+      // Immediately fetch profile after successful login
+      if (data.user) {
+        await fetchProfile(data.user);
+      }
+>>>>>>> f5774393b6fa126968ef3dca89f033985d81a973
     } catch (error) {
       console.error('Login error:', error);
       setLoading(false);

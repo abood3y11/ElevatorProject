@@ -1,3 +1,11 @@
+/*
+  # Create Admin User
+  
+  1. Creates an admin user in auth.users table
+  2. Creates corresponding profile in profiles table
+  3. Sets up proper role and metadata
+*/
+
 -- Create admin user with proper metadata
 INSERT INTO auth.users (
   instance_id,
@@ -24,7 +32,7 @@ INSERT INTO auth.users (
   crypt('Admin123!', gen_salt('bf')),
   now(),
   '{"provider":"email","providers":["email"],"role":"admin"}',
-  '{"name":"System Administrator","role":"admin","phone":null}',
+  '{"name":"System Administrator","role":"admin","phone":null,"position":"Administrator","department":"Management"}',
   now(),
   now(),
   '',
@@ -32,3 +40,22 @@ INSERT INTO auth.users (
   '',
   ''
 );
+
+-- Create profile for admin user
+INSERT INTO public.profiles (
+  id,
+  name,
+  role,
+  phone,
+  created_at,
+  updated_at
+)
+SELECT 
+  id,
+  raw_user_meta_data->>'name',
+  'management',
+  raw_user_meta_data->>'phone',
+  created_at,
+  updated_at
+FROM auth.users
+WHERE email = 'admin@elevatorapp.com';

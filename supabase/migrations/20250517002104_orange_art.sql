@@ -1,4 +1,10 @@
--- Create admin user with proper metadata
+/*
+  # Create Admin User
+  
+  Creates the initial admin user for the system
+*/
+
+-- Create admin user
 INSERT INTO auth.users (
   instance_id,
   id,
@@ -23,12 +29,12 @@ INSERT INTO auth.users (
   'admin@elevatorapp.com',
   crypt('Admin123!', gen_salt('bf')),
   now(),
-  '{"provider":"email","providers":["email"],"role":"admin"}',
-  '{"name":"System Administrator","role":"admin","phone":null}',
+  '{"provider":"email","providers":["email"]}',
+  '{"name":"System Administrator","role":"admin","position":"Administrator","department":"Management"}',
   now(),
   now(),
   '',
   '',
   '',
   ''
-);
+) ON CONFLICT DO NOTHING;
