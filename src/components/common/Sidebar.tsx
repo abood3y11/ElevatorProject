@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Building2, Calendar, ClipboardList, Home, BarChart3, Users, Package, Settings, LogOut } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Building2, Calendar, ClipboardList, Home, BarChart3, Users, Package, LogOut } from 'lucide-react';
 import { useAuth, UserRole } from '../../context/AuthContext';
 
 interface SidebarProps {
@@ -15,6 +15,23 @@ interface NavItem {
 
 const Sidebar: React.FC<SidebarProps> = ({ role }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  // In Sidebar.tsx, update the handleLogout function
+const handleLogout = async () => {
+  try {
+    // First navigate away to prevent protected route issues
+    navigate('/login', { replace: true });
+    
+    // Then logout
+    setTimeout(async () => {
+      await logout();
+      console.log('Logout complete');
+    }, 100);
+  } catch (error) {
+    console.error('Error during logout:', error);
+  }
+};
   
   const getNavItems = (): NavItem[] => {
     switch(role) {
@@ -127,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       
       <div className={`absolute bottom-0 w-full p-4 border-t ${colors.border}`}>
         <button 
-          onClick={logout}
+          onClick={handleLogout}
           className={`flex items-center space-x-3 ${colors.text} ${colors.textHover} w-full p-3 rounded-lg ${colors.hover} transition duration-150`}
         >
           <LogOut size={20} />

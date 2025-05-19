@@ -1,44 +1,48 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth, UserRole } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import type { UserRole } from '../../context/AuthContext';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  role: UserRole | UserRole[];
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, role }) => {
-  const { user, isAuthenticated, loading } = useAuth();
+// This is a general-purpose ProtectedRoute component
+const ProtectedRoute: React.FC<{ 
+  children: React.ReactNode; 
+  role?: UserRole;
+}> = ({ children, role }) => {
+  const { user, loading, isAuthenticated } = useAuth();
   
-  // Show loading indicator while checking authentication
+  console.log(`ProtectedRoute (${role || 'any'}) - Auth state:`, { user, loading, isAuthenticated, requiredRole: role });
+  
+  // Show loading indicator while checking auth status
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <div className="flex flex-col items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
+      <p className="text-gray-600">Checking authentication...</p>
+    </div>;
   }
-  
-  // Redirect to login if not authenticated
+
+  // If not authenticated, redirect to login
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
-  
-  // Check if user has the required role
-  const requiredRoles = Array.isArray(role) ? role : [role];
-  const hasRequiredRole = user && requiredRoles.includes(user.role);
-  
-  if (!hasRequiredRole) {
-    // Redirect to appropriate dashboard based on actual role
-    if (user?.role === 'customer') {
-      return <Navigate to="/customer" replace />;
-    } else if (user?.role === 'employee') {
-      return <Navigate to="/employee" replace />;
-    } else if (user?.role === 'management') {
-      return <Navigate to="/admin" replace />;
+
+  // If role is specified and user's role doesn't match, redirect to appropriate dashboard
+  if (role && user?.role !== role) {
+    console.log(`Role mismatch: Required ${role}, user has ${user?.role}`);
+    switch (user?.role) {
+      case 'customer':
+        return <Navigate to="/customer" replace />;
+      case 'employee':
+        return <Navigate to="/employee" replace />;
+      case 'admin':
+        return <Navigate to="/admin" replace />;
+      default:
+        return <Navigate to="/login" replace />;
     }
-    
-    // Fallback to login if role is unrecognized
-    return <Navigate to="/login" replace />;
   }
-  
-  // Render children if authenticated and authorized
+
+  // If authenticated and role matches (or no role required), render children
+  console.log('Authentication and role checks passed, rendering protected content');
   return <>{children}</>;
 };
 

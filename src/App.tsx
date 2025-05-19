@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { DatabaseProvider } from './context/DatabaseContext';
@@ -19,6 +18,7 @@ import AdminContracts from './pages/admin/Contracts';
 import AdminInventory from './pages/admin/Inventory';
 import AdminReports from './pages/admin/Reports';
 import NotFound from './pages/NotFound';
+import LogoutHandler from './components/common/LogoutHandler';
 
 function App() {
   return (
@@ -26,9 +26,16 @@ function App() {
       <DatabaseProvider>
         <Router>
           <Routes>
+            {/* Login route should be first to catch redirects */}
             <Route path="/login" element={<Login />} />
             
-            {/* Landing page redirects to login */}
+            {/* Special logout route that bypasses the dashboard */}
+            <Route path="/logout" element={<LogoutHandler />} />
+            
+            {/* Dashboard acts as a router based on user role */}
+            <Route path="/dashboard" element={<Dashboard />} />
+            
+            {/* Landing page redirects to dashboard which will handle login check */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             
             {/* Customer Routes */}

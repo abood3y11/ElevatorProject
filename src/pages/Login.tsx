@@ -1,16 +1,44 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { Building2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
+import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Handle redirect when authentication state changes
+  useEffect(() => {
+    console.log('Login component - Auth state:', { isAuthenticated, user, loading });
+    
+    // Only redirect if we're authenticated, not loading, and have user info
+    if (isAuthenticated && !loading && user) {
+      console.log('User authenticated with role:', user.role);
+      
+      // Use timeout to ensure state has settled
+      setTimeout(() => {
+        // Redirect based on user role
+        switch (user.role) {
+          case 'customer':
+            navigate('/customer', { replace: true });
+            break;
+          case 'employee':
+            navigate('/employee', { replace: true });
+            break;
+          case 'admin':
+            navigate('/admin', { replace: true });
+            break;
+          default:
+            navigate('/dashboard', { replace: true });
+        }
+      }, 100);
+    }
+  }, [isAuthenticated, user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,9 +46,11 @@ const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
+      console.log('Submitting login form for:', email);
       await login(email, password);
-      // Navigation will be handled by the auth state change
+      console.log('Login function completed');
     } catch (err) {
+      console.error('Login form submission error:', err);
       setError('Invalid email or password');
     } finally {
       setIsLoading(false);
@@ -29,22 +59,27 @@ const Login: React.FC = () => {
 
   const handleDemoLogin = async (role: string) => {
     setIsLoading(true);
+    setError('');
+    
     try {
+      console.log(`Attempting demo login for role: ${role}`);
       switch (role) {
         case 'employee':
-          await login('employee@example.com', 'password');
+          await login('employee@example.com', 'Employee123!');
           break;
         case 'admin':
           await login('admin@elevatorapp.com', 'Admin123!');
           break;
       }
     } catch (err) {
+      console.error('Demo login error:', err);
       setError('Failed to login with demo account');
     } finally {
       setIsLoading(false);
     }
   };
 
+  
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center">
       <div className="max-w-md w-full mx-auto">

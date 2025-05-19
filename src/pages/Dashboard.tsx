@@ -1,25 +1,47 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  useEffect(() => {
+    // Only check once loading is complete
+    if (!loading) {
+      console.log('Dashboard - Auth state loaded:', user);
+      
+      if (!user) {
+        // No user, go to login
+        navigate('/login', { replace: true });
+      } else {
+        // User exists, redirect based on role
+        console.log('Redirecting to role-specific dashboard:', user.role);
+        switch (user.role) {
+          case 'customer':
+            navigate('/customer', { replace: true });
+            break;
+          case 'employee':
+            navigate('/employee', { replace: true });
+            break;
+          case 'admin':
+            navigate('/admin', { replace: true });
+            break;
+          default:
+            // Unknown role, go to login
+            navigate('/login', { replace: true });
+        }
+      }
+    }
+  }, [loading, user, navigate]);
   
-  // Redirect based on user role
-  switch (user.role) {
-    case 'customer':
-      return <Navigate to="/customer" replace />;
-    case 'employee':
-      return <Navigate to="/employee" replace />;
-    case 'admin':
-      return <Navigate to="/admin" replace />;
-    default:
-      return <Navigate to="/login" replace />;
-  }
+  // Simple loading display
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
+      <p className="text-gray-600">Redirecting...</p>
+    </div>
+  );
 };
 
 export default Dashboard;
