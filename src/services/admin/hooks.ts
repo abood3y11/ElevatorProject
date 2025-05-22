@@ -10,10 +10,10 @@ import {
   Contract,
   ContractSummary,
   Building,
+  Customer,
   InventoryItem,
   InventorySummary,
   User,
-  Customer,
   UserSummary,
   MaintenanceData,
   RevenueData,
@@ -26,43 +26,50 @@ import {
   DashboardSummary
 } from './types';
 
-// Generic hook for loading data with a service method
+// Enhanced generic hook for loading data with refetch functionality
 export function useServiceCall<T>(
-  serviceMethod: () => Promise<{ data: T | null; error: Error | null; count?: number | null }>,
-  dependencies: unknown[] = []
+  serviceMethod: () => Promise<{ data: T | null; error: any; count?: number | null }>,
+  dependencies: any[] = []
 ) {
   const [data, setData] = useState<T | null>(null);
   const [count, setCount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await serviceMethod();
+      if (result.error) {
+        setError(result.error);
+        setData(null);
+      } else {
+        setData(result.data);
+        if (result.count !== undefined) {
+          setCount(result.count);
+        }
+        setError(null);
+      }
+    } catch (err) {
+      setError(err);
+      setData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, dependencies);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const result = await serviceMethod();
-        if (result.error) {
-          setError(result.error);
-          setData(null);
-        } else {
-          setData(result.data);
-          if (result.count !== undefined) {
-            setCount(result.count);
-          }
-          setError(null);
-        }
-      } catch (err) {
-        setError(err as Error);
-        setData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
   }, dependencies);
 
-  return { data, isLoading, error, count };
+  // Return refetch function along with data
+  return { 
+    data, 
+    isLoading, 
+    error, 
+    count, 
+    refetch: fetchData 
+  };
 }
 
 // Dashboard hooks
@@ -87,28 +94,63 @@ export function useTechnicianStatus() {
 }
 
 export function useExpiringContracts(limit: number = 3) {
-  return useServiceCall<ExpiringContract[]>(() => dashboardService.getExpiringContracts(limit));
+  return useServiceCall<ExpiringContract[]>(
+    () => dashboardService.getExpiringContracts(limit),
+    [limit]
+  );
 }
 
 export function useLowStockItems(limit: number = 3) {
-  return useServiceCall<LowStockItem[]>(() => dashboardService.getLowStockItems(limit));
+  return useServiceCall<LowStockItem[]>(
+    () => dashboardService.getLowStockItems(limit),
+    [limit]
+  );
 }
 
 export function useRecentActivities(limit: number = 5) {
-  return useServiceCall<ActivityLog[]>(() => dashboardService.getRecentActivities(limit));
+  return useServiceCall<ActivityLog[]>(
+    () => dashboardService.getRecentActivities(limit),
+    [limit]
+  );
 }
 
 export function useKeyMetrics() {
   return useServiceCall<KeyMetric[]>(dashboardService.getKeyMetrics);
 }
 
-// Contracts hooks
-export function useContracts(searchTerm?: string, status?: string, page: number = 1, limit: number = 10) {
-  const fetch = useCallback(() => {
-    return contractsService.getContracts(searchTerm, status, page, limit);
+// Contracts hooks with proper refetch
+export function useContracts(
+  searchTerm?: string, 
+  status?: string, 
+  page: number = 1, 
+  limit: number = 10
+) {
+  // Create a memoized fetch function
+  const fetchContracts = useCallback(() => {
+    // Validate and sanitize inputs
+    const sanitizedSearchTerm = searchTerm?.trim() || '';
+    const sanitizedStatus = status?.trim() || '';
+    
+    return contractsService.getContracts(
+      sanitizedSearchTerm, 
+      sanitizedStatus, 
+      page, 
+      limit
+    );
   }, [searchTerm, status, page, limit]);
-  
-  return useServiceCall<Contract[]>(fetch, [searchTerm, status, page, limit]);
+
+  // Use the service call hook with the memoized fetch function
+  return useServiceCall<Contract[]>(fetchContracts, [
+    searchTerm, 
+    status, 
+    page, 
+    limit
+  ]);
+}
+
+
+export function useContractStatuses() {
+  return useServiceCall<string[]>(contractsService.getContractStatuses);
 }
 
 export function useContractById(id: string) {
@@ -121,6 +163,18 @@ export function useContractSummary() {
 
 export function useBuildings() {
   return useServiceCall<Building[]>(contractsService.getBuildings);
+}
+
+export function useCustomers() {
+  return useServiceCall<Customer[]>(contractsService.getCustomers);
+}
+
+export function useCustomerById(id: string) {
+  return useServiceCall<Customer>(() => contractsService.getCustomerById(id), [id]);
+}
+
+export function useBuildingById(id: string) {
+  return useServiceCall<Building>(() => contractsService.getBuildingById(id), [id]);
 }
 
 // Inventory hooks
@@ -155,18 +209,6 @@ export function useUsers(searchTerm?: string, role?: string, page: number = 1, l
 
 export function useUserById(id: string) {
   return useServiceCall<User>(() => usersService.getUserById(id), [id]);
-}
-
-export function useCustomers(searchTerm?: string, page: number = 1, limit: number = 10) {
-  const fetch = useCallback(() => {
-    return usersService.getCustomers(searchTerm, page, limit);
-  }, [searchTerm, page, limit]);
-  
-  return useServiceCall<Customer[]>(fetch, [searchTerm, page, limit]);
-}
-
-export function useCustomerById(id: string) {
-  return useServiceCall<Customer>(() => usersService.getCustomerById(id), [id]);
 }
 
 export function useUserSummary() {
@@ -220,261 +262,250 @@ export function useReportKeyMetrics(
   return useServiceCall<KeyMetric[]>(fetch, [currentPeriodStart, currentPeriodEnd, previousPeriodStart, previousPeriodEnd]);
 }
 
-// Mutation hooks
+// Enhanced mutation hooks for Contracts with proper mutate function
 export function useCreateContract() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const createContract = async (contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const mutate = async (contract: Omit<Contract, 'id' | 'created_at' | 'updated_at'>) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { data, error } = await contractsService.createContract(contract);
-      if (error) setError(error);
-      return { data, error };
+      if (error) {
+        setError(error);
+        throw error;
+      }
+      return data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { createContract, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
 export function useUpdateContract() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const updateContract = async (id: string, updates: Partial<Contract>) => {
+  const mutate = async ({ id, data }: { id: string; data: Partial<Contract> }) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data, error } = await contractsService.updateContract(id, updates);
-      if (error) setError(error);
-      return { data, error };
+      const result = await contractsService.updateContract(id, data);
+      if (result.error) {
+        setError(result.error);
+        throw result.error;
+      }
+      return result.data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { updateContract, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
 export function useDeleteContract() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const deleteContract = async (id: string) => {
+  const mutate = async (id: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { error } = await contractsService.deleteContract(id);
-      if (error) setError(error);
-      return { error };
+      if (error) {
+        setError(error);
+        throw error;
+      }
+      return true;
     } catch (err) {
-      setError(err as Error);
-      return { error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { deleteContract, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
+// Enhanced mutation hooks for Inventory
 export function useCreateInventoryItem() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const createItem = async (item: Omit<InventoryItem, 'id'>) => {
+  const mutate = async (item: Omit<InventoryItem, 'id'>) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { data, error } = await inventoryService.createInventoryItem(item);
-      if (error) setError(error);
-      return { data, error };
+      if (error) {
+        setError(error);
+        throw error;
+      }
+      return data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { createItem, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
 export function useUpdateInventoryItem() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const updateItem = async (id: string, updates: Partial<InventoryItem>) => {
+  const mutate = async ({ id, data }: { id: string; data: Partial<InventoryItem> }) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data, error } = await inventoryService.updateInventoryItem(id, updates);
-      if (error) setError(error);
-      return { data, error };
+      const result = await inventoryService.updateInventoryItem(id, data);
+      if (result.error) {
+        setError(result.error);
+        throw result.error;
+      }
+      return result.data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { updateItem, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
 export function useRestockInventoryItem() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const restockItem = async (id: string, quantity: number) => {
+  const mutate = async ({ id, quantity }: { id: string; quantity: number }) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { data, error } = await inventoryService.restockItem(id, quantity);
-      if (error) setError(error);
-      return { data, error };
+      if (error) {
+        setError(error);
+        throw error;
+      }
+      return data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { restockItem, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
+// Enhanced mutation hooks for Users
 export function useCreateUser() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const createUser = async (user: Omit<User, 'id'>) => {
+  const mutate = async (user: Omit<User, 'id'>) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { data, error } = await usersService.createUser(user);
-      if (error) setError(error);
-      return { data, error };
+      if (error) {
+        setError(error);
+        throw error;
+      }
+      return data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { createUser, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
 export function useUpdateUser() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const updateUser = async (id: string, updates: Partial<User>) => {
+  const mutate = async ({ id, data }: { id: string; data: Partial<User> }) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data, error } = await usersService.updateUser(id, updates);
-      if (error) setError(error);
-      return { data, error };
+      const result = await usersService.updateUser(id, data);
+      if (result.error) {
+        setError(result.error);
+        throw result.error;
+      }
+      return result.data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { updateUser, isLoading, error };
+  return { mutate, isLoading, error };
 }
 
-export function useCreateCustomer() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  
-  const createCustomer = async (customer: Omit<Customer, 'id'>) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const { data, error } = await usersService.createCustomer(customer);
-      if (error) setError(error);
-      return { data, error };
-    } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  return { createCustomer, isLoading, error };
-}
-
-export function useUpdateCustomer() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-  
-  const updateCustomer = async (id: string, updates: Partial<Customer>) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const { data, error } = await usersService.updateCustomer(id, updates);
-      if (error) setError(error);
-      return { data, error };
-    } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  return { updateCustomer, isLoading, error };
-}
-
+// Report generation hook
 export function useGenerateReport() {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<any>(null);
   
-  const generateReport = async (
-    reportType: 'maintenance' | 'revenue' | 'satisfaction' | 'performance',
-    startDate: string,
-    endDate: string,
-    format: 'csv' | 'json' = 'csv'
-  ) => {
+  const mutate = async ({
+    reportType,
+    startDate,
+    endDate,
+    format = 'csv'
+  }: {
+    reportType: 'maintenance' | 'revenue' | 'satisfaction' | 'performance';
+    startDate: string;
+    endDate: string;
+    format?: 'csv' | 'json';
+  }) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { data, error } = await reportsService.generateReport(reportType, startDate, endDate, format);
-      if (error) setError(error);
-      return { data, error };
+      if (error) {
+        setError(error);
+        throw error;
+      }
+      return data;
     } catch (err) {
-      setError(err as Error);
-      return { data: null, error: err };
+      setError(err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
   };
   
-  return { generateReport, isLoading, error };
+  return { mutate, isLoading, error };
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
 import type {
   Building,

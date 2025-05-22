@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../utils/supabase';
 
 // Import the services directly
 import { contractsService } from './contractsService';

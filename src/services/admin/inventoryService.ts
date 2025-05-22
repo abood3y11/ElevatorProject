@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../utils/supabase';
 import { InventoryItem, InventorySummary } from './types';
 
 export const inventoryService = {
