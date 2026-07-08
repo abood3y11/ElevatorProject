@@ -56,6 +56,19 @@ r(){ printf '\033[1;31m%s\033[0m\n' "$*"; }
 step(){ printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 die(){ r "ERROR: $*"; exit 1; }
 
+# Pause on ANY exit (success OR error) so the window never closes before you can
+# read what happened — e.g. a failed SSH or a rejected push. The .ps1 wrapper
+# sets ELMS_NO_PAUSE and does its own pause, so we skip here in that case.
+_pause_on_exit(){
+  local rc=$?
+  if [ "${ELMS_NO_PAUSE:-0}" != "1" ] && [ -t 0 ]; then
+    printf '\n\033[1;36mPress Enter to close...\033[0m'
+    read -r _ </dev/tty || true
+  fi
+  return "$rc"
+}
+trap _pause_on_exit EXIT
+
 # ---------- preflight ----------
 command -v git >/dev/null || die "git not found"
 command -v ssh >/dev/null || die "ssh not found"
@@ -105,7 +118,9 @@ if [ "$DO_BACKUP" -eq 1 ]; then
   RS="$RS echo; echo '== [1] db backup =='; sleep 1; mkdir -p backups; docker exec elms-db pg_dump -U postgres elms_db > backups/elms_db_\$(date +%Y%m%d_%H%M%S).sql || echo 'backup failed (continuing)';"
 fi
 [ "$DO_BACKEND" -eq 1 ]  && RS="$RS echo; echo '== [2] pull backend =='; sleep 1; cd $BACKEND_REPO && git pull --ff-only origin $BRANCH;"
-[ "$DO_FRONTEND" -eq 1 ] && RS="$RS echo; echo '== [3] pull client =='; sleep 1; cd $CLIENT_REPO && git pull --ff-only origin $BRANCH;"
+# The VPS client repo accumulates CRLF line-ending noise (Windows archive/edits)
+# that blocks --ff-only, so stash it first (recoverable) — matches the manual fix.
+[ "$DO_FRONTEND" -eq 1 ] && RS="$RS echo; echo '== [3] pull client =='; sleep 1; cd $CLIENT_REPO && { git stash push -u -m \"predeploy noise (auto)\" >/dev/null 2>&1 || true; }; git pull --ff-only origin $BRANCH;"
 RS="$RS echo; echo '== [4] build =='; sleep 1; cd $VPS_ROOT; docker compose build"
 [ "$DO_BACKEND" -eq 1 ]  && RS="$RS api worker"
 [ "$DO_FRONTEND" -eq 1 ] && RS="$RS web"
@@ -127,11 +142,4 @@ if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then g "  
 
 step "Done"
 g "Deploy complete."
-
-# Keep the window open so you can read the whole deploy output instead of it
-# closing immediately. The .ps1 wrapper does its own pause and sets ELMS_NO_PAUSE
-# so we don't double-prompt.
-if [ "${ELMS_NO_PAUSE:-0}" != "1" ] && [ -t 0 ]; then
-  printf '\n\033[1;36mPress Enter to close...\033[0m'
-  read -r _ || true
-fi
+# (the EXIT trap keeps the window open)
