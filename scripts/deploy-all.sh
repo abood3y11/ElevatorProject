@@ -99,23 +99,25 @@ step "STEP 1/3 — Push code"
 
 # ---------- 2. remote deploy ----------
 step "STEP 2/3 — Deploy on VPS"
+# A 1s pause before each remote step so you can follow the output as it streams.
 RS="set -e; cd $VPS_ROOT;"
 if [ "$DO_BACKUP" -eq 1 ]; then
-  RS="$RS echo '== db backup =='; mkdir -p backups; docker exec elms-db pg_dump -U postgres elms_db > backups/elms_db_\$(date +%Y%m%d_%H%M%S).sql || echo 'backup failed (continuing)';"
+  RS="$RS echo; echo '== [1] db backup =='; sleep 1; mkdir -p backups; docker exec elms-db pg_dump -U postgres elms_db > backups/elms_db_\$(date +%Y%m%d_%H%M%S).sql || echo 'backup failed (continuing)';"
 fi
-[ "$DO_BACKEND" -eq 1 ]  && RS="$RS echo '== pull backend =='; cd $BACKEND_REPO && git pull --ff-only origin $BRANCH;"
-[ "$DO_FRONTEND" -eq 1 ] && RS="$RS echo '== pull client =='; cd $CLIENT_REPO && git pull --ff-only origin $BRANCH;"
-RS="$RS cd $VPS_ROOT; echo '== build =='; docker compose build"
+[ "$DO_BACKEND" -eq 1 ]  && RS="$RS echo; echo '== [2] pull backend =='; sleep 1; cd $BACKEND_REPO && git pull --ff-only origin $BRANCH;"
+[ "$DO_FRONTEND" -eq 1 ] && RS="$RS echo; echo '== [3] pull client =='; sleep 1; cd $CLIENT_REPO && git pull --ff-only origin $BRANCH;"
+RS="$RS echo; echo '== [4] build =='; sleep 1; cd $VPS_ROOT; docker compose build"
 [ "$DO_BACKEND" -eq 1 ]  && RS="$RS api worker"
 [ "$DO_FRONTEND" -eq 1 ] && RS="$RS web"
 RS="$RS;"
-[ "$DO_BACKEND" -eq 1 ]  && RS="$RS echo '== migrate =='; docker compose run --rm api alembic upgrade head;"
-RS="$RS echo '== restart =='; docker compose up -d redis"
+[ "$DO_BACKEND" -eq 1 ]  && RS="$RS echo; echo '== [5] migrate =='; sleep 1; docker compose run --rm api alembic upgrade head;"
+RS="$RS echo; echo '== [6] restart =='; sleep 1; docker compose up -d redis"
 [ "$DO_BACKEND" -eq 1 ]  && RS="$RS api worker"
 [ "$DO_FRONTEND" -eq 1 ] && RS="$RS web"
-RS="$RS; sleep 8; echo '== status =='; docker compose ps; echo '== internal health =='; curl -fsS http://127.0.0.1:8000/api/v1/health && echo;"
+RS="$RS; sleep 8; echo; echo '== [7] status =='; docker compose ps; echo; echo '== [8] internal health =='; curl -fsS http://127.0.0.1:8000/api/v1/health && echo; sleep 1;"
 
-ssh "$VPS" "$RS" || die "remote deploy failed — check the output above (nothing restarted if the build/migrate step failed)"
+# -tt keeps the remote output streaming live to your terminal.
+ssh -tt "$VPS" "$RS" || die "remote deploy failed — check the output above (nothing restarted if the build/migrate step failed)"
 
 # ---------- 3. verify public ----------
 step "STEP 3/3 — Verify public endpoints"
@@ -125,3 +127,11 @@ if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "302" ]; then g "  
 
 step "Done"
 g "Deploy complete."
+
+# Keep the window open so you can read the whole deploy output instead of it
+# closing immediately. The .ps1 wrapper does its own pause and sets ELMS_NO_PAUSE
+# so we don't double-prompt.
+if [ "${ELMS_NO_PAUSE:-0}" != "1" ] && [ -t 0 ]; then
+  printf '\n\033[1;36mPress Enter to close...\033[0m'
+  read -r _ || true
+fi

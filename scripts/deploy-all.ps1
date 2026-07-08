@@ -26,5 +26,14 @@ if (-not $bash) {
 }
 if (-not $bash) { Write-Error "Git Bash not found. Install Git for Windows (https://git-scm.com)."; exit 1 }
 
+# Let the bash script skip its own pause; this wrapper pauses instead so the
+# window stays open after a double-click.
+$env:ELMS_NO_PAUSE = '1'
 if ($Args) { & $bash "$sh" @Args } else { & $bash "$sh" }
-exit $LASTEXITCODE
+$code = $LASTEXITCODE
+
+Write-Host ''
+if ($code -eq 0) { Write-Host 'Deploy finished.' -ForegroundColor Green }
+else { Write-Host "Deploy exited with code $code." -ForegroundColor Red }
+Read-Host 'Press Enter to close'
+exit $code
