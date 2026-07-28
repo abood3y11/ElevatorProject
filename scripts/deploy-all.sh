@@ -129,7 +129,11 @@ RS="$RS;"
 RS="$RS echo; echo '== [6] restart =='; sleep 1; docker compose up -d redis"
 [ "$DO_BACKEND" -eq 1 ]  && RS="$RS api worker"
 [ "$DO_FRONTEND" -eq 1 ] && RS="$RS web"
-RS="$RS; sleep 8; echo; echo '== [7] status =='; docker compose ps; echo; echo '== [8] internal health =='; curl -fsS http://127.0.0.1:8000/api/v1/health && echo; sleep 1;"
+# The API runs a contract catch-up scan on boot, which regularly takes longer
+# than a flat sleep — a fixed 8s wait reported "api health FAILED" on a deploy
+# that was completely fine. Poll instead, up to ~90s, and only call it failed
+# when it never came up.
+RS="$RS; echo; echo '== [7] status =='; docker compose ps; echo; echo '== [8] internal health =='; for i in \$(seq 1 30); do if curl -fsS http://127.0.0.1:8000/api/v1/health; then echo; echo \"(healthy after \${i} attempt(s))\"; break; fi; if [ \$i -eq 30 ]; then echo 'api did not become healthy within ~90s'; docker compose logs api --tail=40; exit 1; fi; sleep 3; done;"
 
 # -tt keeps the remote output streaming live to your terminal.
 ssh -tt "$VPS" "$RS" || die "remote deploy failed — check the output above (nothing restarted if the build/migrate step failed)"
