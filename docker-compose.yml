@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: elms-db
+    environment:
+      POSTGRES_DB: elms_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d elms_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: elms-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: elms-backend
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DEBUG: "True"
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://postgres:admin@db:5432/elms_db
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://localhost:8081,http://localhost:19006
+      JWT_SECRET_KEY: super-secret-key-change-in-production
+      REDIS_ENABLED: "true"
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: elms-worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DEBUG: "True"
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql://postgres:admin@db:5432/elms_db
+      JWT_SECRET_KEY: super-secret-key-change-in-production
+      REDIS_ENABLED: "true"
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app
+    command: python -m app.workers.redis_worker
+
+  frontend:
+    build:
+      context: ./AdminPortal
+      dockerfile: Dockerfile
+    container_name: elms-admin-frontend
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000/api/v1
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./AdminPortal:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+
+volumes:
+  postgres_data:
+  redis_data:

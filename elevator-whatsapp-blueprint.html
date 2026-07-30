@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ترقية نظام واتساب لشركة إدارة المصاعد — Blueprint كامل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Cairo:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+:root{
+  --steel:#1e3a5f; --ink:#152238; --blue:#2563eb; --sky:#0ea5e9;
+  --lift:#f59e0b; --danger:#dc2626; --ok:#059669;
+  --paper:#f5f7fa; --line:#dde5ef; --mint:#eaf2ff;
+  --card-shadow:0 4px 6px rgba(21,34,56,.08),0 2px 4px rgba(21,34,56,.05);
+  --card-shadow-hover:0 12px 26px rgba(37,99,235,.18);
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.75}
+h1,h2,h3{font-family:'Cairo','IBM Plex Sans Arabic',sans-serif}
+
+.app{display:grid;grid-template-columns:275px 1fr;min-height:100vh}
+aside{background:linear-gradient(180deg,#0f1c33 0%,#1e3a5f 55%,#2563eb 150%);color:#dbe7fb;position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 18px}
+aside .logo{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+aside .logo .dot{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#2563eb);display:grid;place-items:center;font-size:19px;box-shadow:0 4px 10px rgba(0,0,0,.3)}
+aside .logo b{font-family:'Cairo';font-size:16px;color:#fff}
+aside .logo small{display:block;font-size:11px;color:#9db8e0}
+aside nav a{display:flex;align-items:center;gap:9px;color:#c3d6f5;text-decoration:none;padding:8px 12px;border-radius:10px;font-size:13px;margin-bottom:3px;transition:all .25s ease}
+aside nav a:hover{background:rgba(255,255,255,.1);color:#fff;transform:translateX(-3px)}
+aside nav .grp{font-size:11px;letter-spacing:.5px;color:#7fa0d0;margin:15px 6px 6px}
+main{padding:34px clamp(18px,4vw,54px);max-width:1200px}
+
+.hero{background:linear-gradient(135deg,#0f1c33 0%,#1e3a5f 45%,#2563eb 100%);color:#fff;border-radius:22px;padding:38px 36px;box-shadow:0 18px 40px rgba(30,58,95,.32);position:relative;overflow:hidden;margin-bottom:34px}
+.hero::after{content:"🛗";position:absolute;inset-inline-start:24px;bottom:-18px;font-size:130px;opacity:.12}
+.hero h1{font-size:clamp(23px,3.3vw,33px);font-weight:900;margin-bottom:10px;position:relative}
+.hero p{max-width:760px;color:#d6e4fb;font-size:14.5px;position:relative}
+.hero .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;position:relative}
+.hero .chips span{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:99px;padding:5px 14px;font-size:12.5px}
+
+section{margin-bottom:52px;scroll-margin-top:24px}
+.sec-head{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.sec-head .num{font-family:'Cairo';font-weight:900;font-size:15px;color:#fff;width:44px;height:44px;border-radius:13px;display:grid;place-items:center;box-shadow:0 6px 14px rgba(0,0,0,.16);flex-shrink:0}
+.sec-head h2{font-size:22px;font-weight:800}
+.sec-sub{color:#5b6f8f;font-size:13.5px;margin:0 58px 20px}
+.g1{background:linear-gradient(135deg,#1e3a5f,#2563eb)}
+.g2{background:linear-gradient(135deg,#b45309,#f59e0b)}
+.g3{background:linear-gradient(135deg,#0369a1,#06b6d4)}
+.g4{background:linear-gradient(135deg,#7f1d1d,#ef4444)}
+.g5{background:linear-gradient(135deg,#4338ca,#8b5cf6)}
+.g6{background:linear-gradient(135deg,#065f46,#10b981)}
+.g7{background:linear-gradient(135deg,#9d174d,#ec4899)}
+.g8{background:linear-gradient(135deg,#374151,#6b7280)}
+
+.grid{display:grid;gap:16px}
+.grid.c2{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.grid.c3{grid-template-columns:repeat(auto-fit,minmax(258px,1fr))}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--card-shadow);transition:transform .25s ease,box-shadow .25s ease}
+.card:hover{transform:translateY(-3px);box-shadow:var(--card-shadow-hover)}
+.card h3{font-size:15.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h3 .tag{font-size:10.5px;font-weight:600;color:#fff;border-radius:7px;padding:2px 9px}
+.card ul{padding-inline-start:18px;font-size:13px;color:#425068}
+.card ul li{margin-bottom:4px}
+.card ul li b{color:var(--ink)}
+
+.dept{border-top:4px solid transparent}
+.d-sales{border-top-color:#f59e0b}.d-tech{border-top-color:#2563eb}.d-coord{border-top-color:#06b6d4}
+.d-crm{border-top-color:#ec4899}.d-inv{border-top-color:#10b981}.d-exec{border-top-color:#6b7280}
+.dept .icon{font-size:25px;margin-bottom:6px}
+
+.screen .path{font-family:monospace;direction:ltr;display:inline-block;font-size:11px;background:#0f1c33;color:#93c5fd;border-radius:7px;padding:2px 9px;margin-bottom:8px}
+.screen .comp{font-size:12.5px;color:#425068}
+.screen .comp b{display:block;color:var(--ink);font-size:12px;margin-top:8px}
+
+.diagram{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--card-shadow);overflow-x:auto;margin-bottom:16px}
+.diagram .cap{font-size:12.5px;color:#5b6f8f;border-inline-start:3px solid var(--blue);padding-inline-start:10px;margin-bottom:10px}
+.mermaid{direction:ltr;text-align:center;min-width:640px}
+
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--r);overflow:hidden;box-shadow:var(--card-shadow);font-size:13px}
+th{background:linear-gradient(135deg,#0f1c33,#1e3a5f);color:#fff;padding:10px 14px;text-align:right;font-weight:600}
+td{padding:9px 14px;border-bottom:1px solid #eef2f8;color:#3a4a66;vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f2f7ff}
+td.bad{color:var(--danger);font-weight:600}
+td.good{color:var(--ok);font-weight:600}
+
+.alert{border-radius:var(--r);padding:16px 20px;font-size:13.5px;margin-bottom:16px;box-shadow:var(--card-shadow)}
+.alert.warn{background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1px solid #fcd34d;color:#92400e}
+.alert.info{background:linear-gradient(135deg,#eff6ff,#dbeafe);border:1px solid #93c5fd;color:#1e40af}
+.alert.crit{background:linear-gradient(135deg,#fef2f2,#fee2e2);border:1px solid #fca5a5;color:#991b1b}
+.alert b{display:block;margin-bottom:4px;font-size:14px}
+
+code.k{font-family:monospace;direction:ltr;display:inline-block;background:#0f1c33;color:#7dd3fc;border-radius:6px;padding:1px 8px;font-size:11.5px}
+
+.phase{position:relative;padding-inline-start:26px}
+.phase::before{content:"";position:absolute;inset-inline-start:8px;top:6px;bottom:-16px;width:3px;background:linear-gradient(180deg,#2563eb,#f59e0b)}
+.phase:last-child::before{display:none}
+.phase .pdot{position:absolute;inset-inline-start:0;top:4px;width:19px;height:19px;border-radius:50%;background:#fff;border:4px solid var(--blue);box-shadow:0 0 0 3px #dbeafe}
+
+footer{margin-top:40px;padding:22px;border-radius:var(--r);background:linear-gradient(135deg,#0f1c33,#1e3a5f);color:#9db8e0;font-size:12.5px;text-align:center}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  aside{position:relative;height:auto}
+  aside nav{display:flex;flex-wrap:wrap;gap:4px}
+  aside nav .grp{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside>
+  <div class="logo">
+    <div class="dot">🛗</div>
+    <div><b>Elevator WA System</b><small>ترقية نظام واتساب المصاعد</small></div>
+  </div>
+  <nav>
+    <div class="grp">التشخيص</div>
+    <a href="#gap">📊 الوضع الحالي vs المستهدف</a>
+    <a href="#media">🖼️ حل مشكلة الصور والملصقات</a>
+    <div class="grp">التصميم</div>
+    <a href="#arch">🏗️ المعمارية المطوّرة</a>
+    <a href="#depts">🏢 الأقسام والأدوار</a>
+    <a href="#routing">🧭 محرك التوجيه للأقسام</a>
+    <div class="grp">حالات الاستخدام</div>
+    <a href="#usecases">📦 Use Cases لكل قسم</a>
+    <div class="grp">الواجهات</div>
+    <a href="#sitemap">🗺️ خريطة الشاشات</a>
+    <a href="#screens">🖥️ تفصيل الشاشات</a>
+    <div class="grp">التدفقات والبيانات</div>
+    <a href="#flows">🔄 تدفقات العمل</a>
+    <a href="#erd">🗄️ نموذج البيانات ERD</a>
+    <a href="#roles">🔐 مصفوفة الصلاحيات</a>
+    <a href="#roadmap">🚀 خطة الترقية المرحلية</a>
+  </nav>
+</aside>
+
+<main>
+
+<div class="hero">
+  <h1>ترقية نظام إدارة الواتساب — شركة إدارة المصاعد</h1>
+  <p>مخطط شامل لتحويل نظامك الحالي (قسم صيانة واحد، بلا عرض وسائط) إلى منصة ذكية على نمط كرزون: توجيه تلقائي للأقسام، تذاكر أعطال مرتبطة بالمصاعد والعقود، تصعيد للطوارئ، وعرض كامل للصور والملصقات والصوتيات.</p>
+  <div class="chips">
+    <span>6 أقسام</span><span>11 دوراً وظيفياً</span><span>+55 حالة استخدام</span><span>+28 شاشة</span><span>تذاكر + SLA + طوارئ</span>
+  </div>
+</div>
+
+<!-- ============ 01 GAP ============ -->
+<section id="gap">
+  <div class="sec-head"><div class="num g1">01</div><h2>تشخيص الوضع الحالي مقابل المستهدف</h2></div>
+  <p class="sec-sub">تحليل الفجوة Gap Analysis بين نظامك الحالي والنظام الذكي المستهدف.</p>
+  <table>
+    <tr><th>الميزة</th><th>نظامك الحالي</th><th>النظام المستهدف</th></tr>
+    <tr><td>عرض الوسائط (صور/ملصقات/صوت/مستندات)</td><td class="bad">✖ لا تظهر</td><td class="good">✔ خط معالجة وسائط كامل (القسم 02)</td></tr>
+    <tr><td>الأقسام</td><td class="bad">قسم الصيانة فقط</td><td class="good">6 أقسام بصناديق وارد منفصلة</td></tr>
+    <tr><td>توجيه المحادثات</td><td class="bad">يدوي / كل شيء للصيانة</td><td class="good">بوت قائمة أزرار + كلمات مفتاحية + توزيع ذكي</td></tr>
+    <tr><td>الإسناد Assignment</td><td class="bad">غير موجود</td><td class="good">إسناد لموظف داخل القسم + إشعارات منفصلة</td></tr>
+    <tr><td>ربط المحادثة بالأصول</td><td class="bad">لا يوجد</td><td class="good">كل محادثة ← مبنى ← مصعد ← عقد</td></tr>
+    <tr><td>تذاكر الأعطال Work Orders</td><td class="bad">خارج النظام</td><td class="good">إنشاء تذكرة من المحادثة وإرسال فني</td></tr>
+    <tr><td>الطوارئ (احتجاز أشخاص)</td><td class="bad">كأي رسالة</td><td class="good">كشف تلقائي + تصعيد فوري + SLA دقائق</td></tr>
+    <tr><td>خارج أوقات الدوام</td><td class="bad">صمت</td><td class="good">رد آلي + مسار طوارئ 24/7</td></tr>
+    <tr><td>التقارير</td><td class="bad">لا يوجد</td><td class="good">زمن استجابة، أعطال متكررة لكل مصعد، أداء فنيين</td></tr>
+  </table>
+</section>
+
+<!-- ============ 02 MEDIA ============ -->
+<section id="media">
+  <div class="sec-head"><div class="num g2">02</div><h2>حل مشكلة الصور والملصقات (خط معالجة الوسائط)</h2></div>
+  <p class="sec-sub">السبب الجذري: واتساب لا يرسل الملف نفسه في الـ Webhook، بل يرسل معرّفاً <code class="k">media_id</code> يجب تنزيله خلال مهلة محددة.</p>
+
+  <div class="alert warn"><b>⚠️ لماذا لا تظهر الوسائط عندك الآن؟</b>
+  الـ Webhook يصلك فيه <code class="k">type: "image"</code> و <code class="k">image.id</code> فقط بدون رابط مباشر. إن لم تنفّذ خطوة التنزيل والتخزين، لن يكون لديك ملف لعرضه — وهذا ما يحدث في نظامك.</div>
+
+  <div class="diagram">
+    <div class="cap">خط معالجة الوسائط الصحيح — Media Pipeline</div>
+    <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as 🙋 العميل
+  participant M as Meta Cloud API
+  participant S as خادمك (Webhook)
+  participant ST as التخزين S3/MinIO
+  participant UI as واجهة الموظف
+  C->>M: يرسل صورة العطل 📷
+  M->>S: Webhook { type:"image", image:{ id, mime_type, sha256 } }
+  S->>M: GET /v19.0/{media_id} (Bearer Token)
+  M-->>S: { url: "رابط مؤقت صالح ~5 دقائق" }
+  S->>M: GET url مع نفس الـ Token
+  M-->>S: بايتات الملف الفعلية
+  S->>ST: حفظ الملف + توليد Thumbnail
+  S->>S: تخزين السجل: message(type, mime, storage_url)
+  UI->>ST: عرض الصورة عبر رابط موقّع Signed URL
+    </pre>
+  </div>
+
+  <div class="grid c3">
+    <div class="card"><h3><span class="tag g2">قاعدة 1</span> التنزيل الفوري</h3><ul>
+      <li>رابط الوسائط من Meta <b>مؤقت (~5 دقائق)</b> — نزّل فور وصول الـ Webhook</li>
+      <li>استخدم طابور Queue حتى لا يتأخر الرد على Meta (يجب إرجاع 200 خلال ثوانٍ)</li>
+      <li>أعد المحاولة Retry عند الفشل (3 محاولات + Backoff)</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g2">قاعدة 2</span> العرض حسب النوع</h3><ul>
+      <li><b>image</b> (jpeg/png) ← معاينة + تكبير Lightbox</li>
+      <li><b>sticker</b> ← ملف <code class="k">webp</code> يُعرض كصورة 128px شفافة</li>
+      <li><b>audio/voice</b> ← <code class="k">ogg/opus</code>: مشغّل صوت (حوّل إلى mp3 إن لزم للمتصفحات القديمة)</li>
+      <li><b>video</b> ← مشغّل مع Poster frame</li>
+      <li><b>document</b> ← بطاقة باسم الملف + أيقونة النوع + زر تنزيل</li>
+      <li><b>location</b> ← خريطة مصغّرة بإحداثيات المبنى 📍</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g2">قاعدة 3</span> نوع غير مدعوم؟</h3><ul>
+      <li>لا تُسقط الرسالة أبداً — اعرض بطاقة: "📎 مرفق من نوع X"</li>
+      <li>خزّن الـ payload الخام دائماً للرجوع إليه</li>
+      <li>وسائط العميل مفيدة جداً هنا: <b>صورة لوحة العطل أو رقم المصعد تسرّع التشخيص!</b></li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============ 03 ARCHITECTURE ============ -->
+<section id="arch">
+  <div class="sec-head"><div class="num g3">03</div><h2>المعمارية المطوّرة للنظام</h2></div>
+  <p class="sec-sub">إضافة 4 مكوّنات جديدة على نظامك: معالج الوسائط، محرك التوجيه، نظام التذاكر، ومحرك الطوارئ.</p>
+  <div class="diagram">
+    <div class="cap">المعمارية المستهدفة — المكوّنات الجديدة بإطار سميك</div>
+    <pre class="mermaid">
+flowchart TB
+  subgraph CH["📡 القنوات"]
+    WA["واتساب أعمال API الرسمي"]
+  end
+  subgraph GW["🚪 بوابة الاستقبال"]
+    WH["Webhook Receiver"]; MP["🆕 معالج الوسائط Media Pipeline"]; Q["طابور Queue"]
+  end
+  subgraph CORE["⚙️ المحرك"]
+    BOT["🆕 بوت القائمة (اضغط 1..5)"]; ROUTE["🆕 محرك التوجيه للأقسام"]; EMG["🆕 محرك الطوارئ Escalation"]; SLA["ساعات العمل + SLA"]
+  end
+  subgraph DEPTS["🏢 صناديق وارد الأقسام"]
+    D1["📞 المبيعات والتعاقدات"]; D2["🔧 الصيانة والأعطال"]; D3["📋 التنسيق والدعم"]; D4["💬 علاقات العملاء"]; D5["📦 المخزون"]
+  end
+  subgraph OPS["🎫 نظام العمليات"]
+    TKT["نظام التذاكر Work Orders"]; TECH["📱 تطبيق الفنيين"]; ASSET["سجل المصاعد والعقود"]
+  end
+  subgraph DATA["🗄️ البيانات"]
+    DB[("قاعدة البيانات")]; S3[("تخزين الوسائط")]
+  end
+  WA --> WH --> Q --> BOT
+  WH --> MP --> S3
+  BOT --> ROUTE
+  ROUTE --> D1 & D2 & D3 & D4 & D5
+  ROUTE --> EMG
+  EMG -->|"احتجاز/طارئ"| TECH
+  D2 --> TKT --> TECH
+  TKT <--> ASSET
+  DEPTS --> DB
+  SLA --> ROUTE
+  style MP stroke:#f59e0b,stroke-width:3px
+  style BOT stroke:#f59e0b,stroke-width:3px
+  style ROUTE stroke:#f59e0b,stroke-width:3px
+  style EMG stroke:#dc2626,stroke-width:3px
+    </pre>
+  </div>
+</section>
+
+<!-- ============ 04 DEPARTMENTS ============ -->
+<section id="depts">
+  <div class="sec-head"><div class="num g4">04</div><h2>الأقسام والأدوار داخل النظام</h2></div>
+  <p class="sec-sub">هيكلك التنظيمي مُسقطاً على المنصة: كل قسم = صندوق وارد + فريق + صلاحيات.</p>
+  <div class="grid c3">
+    <div class="card dept d-sales"><div class="icon">📞</div><h3>المبيعات والتعاقدات</h3><ul>
+      <li><b>مدير المبيعات:</b> عروض الأسعار، تجديد العقود، كبار العملاء</li>
+      <li><b>مسؤول العقود:</b> بنود العقود، الامتثال لـ SLA، الجوانب الإدارية</li>
+      <li><b>يستقبل:</b> عقود جديدة، تحديث مصاعد، عروض أسعار، تجديدات</li>
+    </ul></div>
+    <div class="card dept d-tech"><div class="icon">🔧</div><h3>العمليات الفنية</h3><ul>
+      <li><b>مدير العمليات:</b> يراقب كل الأقسام الفنية والمؤشرات</li>
+      <li><b>مشرف الصيانة:</b> يستقبل البلاغات، يفتح التذاكر، يوزع الفنيين</li>
+      <li><b>فني الصيانة:</b> تطبيق جوال — يستلم التذكرة وينفذ ويوثق</li>
+      <li><b>مدير التركيب + مراقب الجودة:</b> متابعة مشاريع التركيب والفحوصات</li>
+      <li><b>يستقبل:</b> أعطال، بلاغات طوارئ، مواعيد صيانة دورية</li>
+    </ul></div>
+    <div class="card dept d-coord"><div class="icon">📋</div><h3>التنسيق والدعم</h3><ul>
+      <li><b>منسق العمليات:</b> جدولة الفنيين، تنسيق دخول المواقع، حلقة الوصل</li>
+      <li><b>يستقبل:</b> تأكيد مواعيد، تنسيق دخول، متابعة حالة زيارة</li>
+    </ul></div>
+    <div class="card dept d-crm"><div class="icon">💬</div><h3>علاقات العملاء</h3><ul>
+      <li><b>مسؤول علاقات:</b> الشكاوى، الاستفسارات الإدارية، الفواتير والعقود القديمة</li>
+      <li><b>مسؤول الحسابات المالية:</b> المستحقات، تذكيرات السداد، الفواتير</li>
+    </ul></div>
+    <div class="card dept d-inv"><div class="icon">📦</div><h3>المخزون والمشتريات</h3><ul>
+      <li><b>أمين المخزون:</b> استفسارات توفر قطع الغيار، طلبات الفنيين للقطع</li>
+      <li><b>يستقبل:</b> طلبات قطع من التذاكر، استفسارات توفر وأسعار</li>
+    </ul></div>
+    <div class="card dept d-exec"><div class="icon">💼</div><h3>الإدارة العليا</h3><ul>
+      <li><b>رئيس قطاع المصاعد:</b> لوحة مؤشرات فقط + تنبيهات الطوارئ والتصعيد</li>
+      <li>لا يستقبل محادثات — يراقب SLA والربحية والالتزام</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============ 05 ROUTING ============ -->
+<section id="routing">
+  <div class="sec-head"><div class="num g5">05</div><h2>محرك التوجيه للأقسام (قلب النظام)</h2></div>
+  <p class="sec-sub">ثلاث طبقات توجيه تعمل معاً: كشف الطوارئ أولاً ← ثم قائمة البوت ← ثم الكلمات المفتاحية ← وأخيراً التدخل اليدوي.</p>
+
+  <div class="diagram">
+    <div class="cap">شجرة قرار التوجيه — Routing Decision Tree</div>
+    <pre class="mermaid">
+flowchart TB
+  IN["📩 رسالة واردة"] --> KNOWN{"عميل معروف\nمرتبط بعقد؟"}
+  KNOWN -->|"لا"| NEWC["وسم: عميل محتمل"] --> MENU
+  KNOWN -->|"نعم"| EMGCHK{"🚨 كلمات طوارئ؟\nمحتجز / عالق / أشخاص بالداخل"}
+  EMGCHK -->|"نعم"| EMG["مسار الطوارئ:\nتذكرة P1 فورية + اتصال بالمشرف\n+ أقرب فني مناوب"]
+  EMGCHK -->|"لا"| OPENCONV{"محادثة مفتوحة\nخلال 24 ساعة؟"}
+  OPENCONV -->|"نعم"| SAME["تُكمل في نفس القسم\nونفس الموظف"]
+  OPENCONV -->|"لا"| MENU["🤖 بوت القائمة:\n1️⃣ بلاغ عطل\n2️⃣ موعد صيانة\n3️⃣ عقود وعروض أسعار\n4️⃣ فواتير وشكاوى\n5️⃣ قطع غيار"]
+  MENU -->|"1"| ASKLIFT["البوت يسأل: رقم المبنى/المصعد\nأو أرسل صورة لوحة المصعد 📷"] --> D2["🔧 الصيانة + فتح تذكرة مسودة"]
+  MENU -->|"2"| D3["📋 التنسيق"]
+  MENU -->|"3"| D1["📞 المبيعات"]
+  MENU -->|"4"| D4["💬 علاقات العملاء"]
+  MENU -->|"5"| D5["📦 المخزون"]
+  MENU -->|"نص حر"| KW{"كلمات مفتاحية؟\nعطل/واقف/صوت=صيانة\nعرض سعر/عقد=مبيعات\nفاتورة/شكوى=علاقات"}
+  KW -->|"تطابق"| D2
+  KW -->|"لا تطابق"| FALLBACK["صندوق غير المصنف\n← يوزعه منسق العمليات يدوياً"]
+  style EMG fill:#fee2e2,stroke:#dc2626,stroke-width:3px
+    </pre>
+  </div>
+
+  <div class="alert crit"><b>🚨 قاعدة ذهبية للمصاعد: الطوارئ تتجاوز كل شيء</b>
+  كلمات مثل "محتجز، عالق، أشخاص داخل المصعد، باب لا يفتح" تتجاوز البوت والقائمة وساعات الدوام تماماً: تذكرة أولوية P1، إشعار صوتي للمشرف المناوب، وإسناد فوري لأقرب فني — مع مؤقّت SLA ظاهر بالدقائق. سلامة الأرواح لا تنتظر "اضغط 1".</div>
+
+  <div class="grid c3">
+    <div class="card"><h3><span class="tag g5">طبقة 1</span> قائمة البوت التفاعلية</h3><ul>
+      <li>رسالة ترحيب بأزرار واتساب (List Message حتى 10 خيارات)</li>
+      <li>تُرسل لأول رسالة أو بعد 24 ساعة صمت</li>
+      <li>لكل خيار: سؤال متابعة لجمع البيانات قبل التحويل</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g5">طبقة 2</span> الكلمات المفتاحية</h3><ul>
+      <li>قاموس قابل للتعديل من الإعدادات لكل قسم</li>
+      <li>أمثلة: "عطل، واقف، صوت غريب، رجّة" ← صيانة</li>
+      <li>"عرض سعر، عقد، تركيب جديد" ← مبيعات</li>
+      <li>"فاتورة، سداد، شكوى" ← علاقات عملاء</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g5">طبقة 3</span> التوزيع داخل القسم</h3><ul>
+      <li>Round-Robin أو أقل موظف حِملاً</li>
+      <li>مراعاة حالة الموظف (متاح/مشغول)</li>
+      <li>المشرف يعيد التوزيع يدوياً في أي لحظة</li>
+      <li>غير المسند خلال X دقائق ← تنبيه للمشرف</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============ 06 USE CASES ============ -->
+<section id="usecases">
+  <div class="sec-head"><div class="num g6">06</div><h2>حالات الاستخدام لكل قسم</h2></div>
+  <p class="sec-sub">ما يفعله كل قسم داخل النظام — مرقّمة وجاهزة كمتطلبات Requirements.</p>
+  <div class="grid c2">
+    <div class="card"><h3><span class="tag g2">مبيعات</span> UC-S</h3><ul>
+      <li><b>UC-S1</b> استقبال طلب عرض سعر وفتح فرصة Lead</li>
+      <li><b>UC-S2</b> إرسال عرض PDF داخل المحادثة ومتابعة قراءته</li>
+      <li><b>UC-S3</b> تنبيه آلي قبل انتهاء العقد بـ 60/30 يوماً + رسالة تجديد بقالب معتمد</li>
+      <li><b>UC-S4</b> تحويل العميل بعد التوقيع إلى التنسيق لجدولة أول زيارة</li>
+      <li><b>UC-S5</b> وسم العملاء المحتملين ومتابعة Pipeline</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g1">صيانة</span> UC-M</h3><ul>
+      <li><b>UC-M1</b> استقبال بلاغ عطل مع صور/فيديو/صوت العطل</li>
+      <li><b>UC-M2</b> فتح تذكرة من المحادثة بضغطة: تُملأ تلقائياً (العميل، المبنى، المصعد، الوصف، المرفقات)</li>
+      <li><b>UC-M3</b> إسناد التذكرة لفني وإرسال تفاصيلها لتطبيقه</li>
+      <li><b>UC-M4</b> تحديثات آلية للعميل: "الفني في الطريق 🚗" / "تم الإصلاح ✅"</li>
+      <li><b>UC-M5</b> مسار الطوارئ P1 (احتجاز) بتصعيد فوري</li>
+      <li><b>UC-M6</b> جدولة الصيانة الوقائية الشهرية وإشعار العميل بالموعد</li>
+      <li><b>UC-M7</b> توثيق الفني: صور قبل/بعد + توقيع العميل + تقرير</li>
+      <li><b>UC-M8</b> كشف الأعطال المتكررة لنفس المصعد وتنبيه الجودة</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g3">تنسيق</span> UC-C</h3><ul>
+      <li><b>UC-C1</b> تأكيد مواعيد الزيارات مع العميل عبر أزرار (تأكيد/تأجيل)</li>
+      <li><b>UC-C2</b> تنسيق تصاريح دخول المواقع والأبراج</li>
+      <li><b>UC-C3</b> توزيع الرسائل غير المصنفة على الأقسام</li>
+      <li><b>UC-C4</b> متابعة وصول قطع الغيار المطلوبة للتذاكر</li>
+      <li><b>UC-C5</b> جدول الفنيين اليومي وإعادة الترتيب عند الطوارئ</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g7">علاقات عملاء ومالية</span> UC-R</h3><ul>
+      <li><b>UC-R1</b> استقبال الشكاوى وفتح ملف شكوى بمهلة معالجة</li>
+      <li><b>UC-R2</b> إرسال الفواتير وتذكيرات السداد بقوالب آلية</li>
+      <li><b>UC-R3</b> استفسارات العقود القديمة وكشوف الزيارات</li>
+      <li><b>UC-R4</b> استطلاع رضا CSAT بعد إغلاق كل تذكرة</li>
+      <li><b>UC-R5</b> تصعيد الشكاوى الحرجة لرئيس القطاع</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g6">مخزون</span> UC-I</h3><ul>
+      <li><b>UC-I1</b> استقبال طلب قطعة غيار من تذكرة الفني</li>
+      <li><b>UC-I2</b> الرد على استفسارات التوفر والسعر</li>
+      <li><b>UC-I3</b> إشعار الفني والمنسق عند وصول القطعة</li>
+    </ul></div>
+    <div class="card"><h3><span class="tag g8">إدارة عليا</span> UC-E</h3><ul>
+      <li><b>UC-E1</b> لوحة مؤشرات حية: زمن الاستجابة، التذاكر المفتوحة، SLA</li>
+      <li><b>UC-E2</b> إشعار فوري بكل حالة طوارئ P1 وتقرير إغلاقها</li>
+      <li><b>UC-E3</b> تقرير شهري: أعطال حسب المبنى/المصعد/النوع، تجديدات العقود</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ============ 07 SITEMAP ============ -->
+<section id="sitemap">
+  <div class="sec-head"><div class="num g7">07</div><h2>خريطة الشاشات</h2></div>
+  <p class="sec-sub">لوحة الويب + تطبيق الفنيين الميداني.</p>
+  <div class="diagram">
+    <div class="cap">Navigation Map</div>
+    <pre class="mermaid">
+flowchart TB
+  LOGIN["🔑 تسجيل الدخول"] --> DASH["🏠 اللوحة الرئيسية (حسب الدور)"]
+  DASH --> INBOX["📥 صندوق الوارد (تبويب لكل قسم)"]
+  DASH --> TKTS["🎫 التذاكر Work Orders"]
+  DASH --> ASSETS["🛗 سجل المصاعد والمباني"]
+  DASH --> CONTRACTS["📄 العقود"]
+  DASH --> SCHED["📅 جدول الفنيين"]
+  DASH --> RPT["📊 التقارير"]
+  DASH --> SET["⚙️ الإعدادات"]
+  INBOX --> CONV["نافذة المحادثة + بطاقة العميل والمصعد"]
+  CONV --> NEWTKT["إنشاء تذكرة من المحادثة"]
+  TKTS --> TKTD["تفاصيل التذكرة + الخط الزمني"]
+  ASSETS --> LIFT["ملف المصعد: المواصفات + سجل الأعطال"]
+  SET --> SROUTE["قواعد التوجيه والكلمات المفتاحية"] & SBOT["بوت القائمة"] & STEAM["الفرق والأدوار"] & SSLA["SLA وساعات العمل"] & STPL["قوالب الرسائل"]
+  subgraph MOBILE["📱 تطبيق الفني"]
+    MT1["تذاكري اليوم"] --> MT2["تفاصيل التذكرة + التنقل للموقع"] --> MT3["توثيق الإصلاح: صور + توقيع"] --> MT4["إغلاق وطلب قطع غيار"]
+  end
+  TKTS -.-> MT1
+    </pre>
+  </div>
+</section>
+
+<!-- ============ 08 SCREENS ============ -->
+<section id="screens">
+  <div class="sec-head"><div class="num g1">08</div><h2>تفصيل الشاشات الرئيسية</h2></div>
+  <p class="sec-sub">أهم الشاشات ومكوّناتها — مع التركيز على ما يميّز نشاط المصاعد.</p>
+
+  <h3 style="margin:10px 0 12px;color:var(--blue)">أ) صندوق الوارد والمحادثة</h3>
+  <div class="grid c3">
+    <div class="card screen"><span class="path">/inbox?dept=maintenance</span><h3>وارد الأقسام</h3><div class="comp">تبويبات علوية بألوان الأقسام + عدّادات، فلاتر: (لي / فريقي / غير مسند / طوارئ 🔴)، كل موظف يرى قسمه فقط، المشرف يرى الكل.</div></div>
+    <div class="card screen"><span class="path">/inbox/:id</span><h3>نافذة المحادثة</h3><div class="comp">فقاعات تدعم <b>كل الوسائط</b>: صور بمعاينة، ملصقات webp، مشغل صوت، مستندات، موقع بخريطة. شريط أدوات: تحويل قسم، إسناد موظف، وسم، <b>زر "🎫 إنشاء تذكرة"</b> بارز.</div></div>
+    <div class="card screen"><span class="path">side panel</span><h3>بطاقة العميل والمصعد</h3><div class="comp">اسم العميل والمبنى، <b>قائمة مصاعد المبنى</b> برقمها وحالتها، حالة العقد (ساري/قارب على الانتهاء)، آخر 5 تذاكر، زر فتح ملف المصعد.</div></div>
+  </div>
+
+  <h3 style="margin:22px 0 12px;color:var(--blue)">ب) التذاكر والأصول</h3>
+  <div class="grid c3">
+    <div class="card screen"><span class="path">/tickets</span><h3>لوحة التذاكر</h3><div class="comp">عرض Kanban: جديدة ← مسندة ← في الطريق ← جاري الإصلاح ← بانتظار قطعة ← مغلقة. شارة أولوية P1 حمراء نابضة، مؤقّت SLA لكل بطاقة.</div></div>
+    <div class="card screen"><span class="path">/tickets/:id</span><h3>تفاصيل التذكرة</h3><div class="comp">مصدرها (رابط للمحادثة)، المصعد والمبنى، الوصف والمرفقات، الفني المسند وموقعه، خط زمني كامل، قطع الغيار المستخدمة، تقرير الإغلاق وتوقيع العميل.</div></div>
+    <div class="card screen"><span class="path">/assets/:id</span><h3>ملف المصعد</h3><div class="comp">الموديل، الحمولة، عدد الوقفات، تاريخ التركيب، عقد الصيانة، <b>سجل الأعطال</b> (رسم بياني للتكرار)، مواعيد الصيانة الوقائية القادمة، QR للصق داخل الكابينة يفتح واتساب مباشرة برسالة جاهزة فيها رقم المصعد.</div></div>
+  </div>
+
+  <h3 style="margin:22px 0 12px;color:var(--blue)">ج) الإعدادات والجدولة</h3>
+  <div class="grid c3">
+    <div class="card screen"><span class="path">/settings/routing</span><h3>قواعد التوجيه</h3><div class="comp">جدول: كلمة مفتاحية ← قسم ← أولوية، قسم خاص لكلمات الطوارئ بلون أحمر، اختبار مباشر: "اكتب رسالة وشاهد أين ستذهب".</div></div>
+    <div class="card screen"><span class="path">/settings/bot</span><h3>محرر بوت القائمة</h3><div class="comp">تحرير رسالة الترحيب وخيارات القائمة 1-5، سؤال المتابعة لكل خيار، رسالة خارج الدوام، معاينة هاتف حية.</div></div>
+    <div class="card screen"><span class="path">/schedule</span><h3>جدول الفنيين</h3><div class="comp">تقويم أسبوعي بأعمدة الفنيين، سحب وإفلات للزيارات، تمييز الوقائية (أزرق) والأعطال (برتقالي) والطوارئ (أحمر)، خريطة توزيع الفنيين الجغرافي.</div></div>
+  </div>
+
+  <h3 style="margin:22px 0 12px;color:var(--blue)">د) تطبيق الفني (جوال)</h3>
+  <div class="grid c3">
+    <div class="card screen"><span class="path">tech:/today</span><h3>تذاكري اليوم</h3><div class="comp">قائمة مرتبة بالأولوية والمسار، إشعار Push صوتي مميز للطوارئ، زر "بدأت التحرك" يُرسل تحديثاً آلياً للعميل.</div></div>
+    <div class="card screen"><span class="path">tech:/ticket/:id</span><h3>تنفيذ التذكرة</h3><div class="comp">وصف العطل مع صور العميل، مواصفات المصعد وسجل أعطاله، أزرار حالة (وصلت/جاري/بانتظار قطعة)، طلب قطعة غيار يذهب للمخزون مباشرة.</div></div>
+    <div class="card screen"><span class="path">tech:/close/:id</span><h3>توثيق وإغلاق</h3><div class="comp">صور قبل/بعد إلزامية، وصف الإصلاح، القطع المستخدمة، توقيع العميل على الشاشة، الإغلاق يطلق رسالة CSAT للعميل آلياً.</div></div>
+  </div>
+</section>
+
+<!-- ============ 09 FLOWS ============ -->
+<section id="flows">
+  <div class="sec-head"><div class="num g4">09</div><h2>تدفقات العمل الحرجة</h2></div>
+  <p class="sec-sub">أهم رحلتين: بلاغ العطل العادي، وحالة الطوارئ (احتجاز).</p>
+
+  <div class="diagram">
+    <div class="cap">التدفق 1 — بلاغ عطل بصورة: من الرسالة حتى التقييم</div>
+    <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as 🙋 حارس المبنى
+  participant B as 🤖 البوت
+  participant M as 🔧 مشرف الصيانة
+  participant T as 👷 الفني (تطبيق)
+  participant I as 📦 المخزون
+  C->>B: "المصعد واقف" + صورة لوحة العطل 📷
+  B->>B: كلمة "واقف" ← قسم الصيانة + معالجة الصورة
+  B->>C: "أي مبنى؟" (أزرار بمباني العميل المسجلة)
+  C->>B: يختار "برج النخيل - مصعد 2"
+  B->>M: محادثة + تذكرة مسودة (المصعد، الصورة، الوصف)
+  M->>T: اعتماد التذكرة وإسنادها لأقرب فني
+  T->>C: تحديث آلي "الفني أحمد في الطريق 🚗 خلال 40 دقيقة"
+  T->>I: يطلب قطعة (كرت تحكم) من التطبيق
+  I->>T: "متوفرة — تُسلَّم مع السائق"
+  T->>T: إصلاح + صور قبل/بعد + توقيع الحارس
+  T->>C: "تم إصلاح المصعد ✅" + تقرير مختصر
+  B->>C: "قيّم الخدمة ⭐" ← يُسجل في تقرير الفني
+    </pre>
+  </div>
+
+  <div class="diagram">
+    <div class="cap">التدفق 2 — 🚨 طوارئ: أشخاص محتجزون داخل المصعد</div>
+    <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as 🙋 العميل
+  participant E as 🚨 محرك الطوارئ
+  participant S as 👨‍✈️ المشرف المناوب
+  participant T as 👷 أقرب فني
+  participant X as 💼 رئيس القطاع
+  C->>E: "فيه ناس محتجزين بالمصعد!!"
+  E->>E: كشف كلمة طوارئ ← تخطي البوت والقائمة
+  E->>C: رد فوري: "تلقينا بلاغكم، فني في الطريق.\nتعليمات السلامة: لا تحاولوا فتح الباب..."
+  E->>S: مكالمة آلية + إشعار صوتي مستمر حتى الاستلام
+  E->>T: تذكرة P1 لأقرب فني مناوب (حسب الموقع)
+  T->>C: "الفني تحرك — وصول خلال 15 دقيقة" + مشاركة موقع مباشر
+  Note over E,X: إن لم يستلم المشرف خلال دقيقتين ← تصعيد تلقائي
+  E-->>X: إشعار بحالة P1 + مؤقت SLA مباشر
+  T->>E: "تم إخراج الأشخاص بسلام" ← إغلاق P1
+  E->>X: تقرير الحادثة: زمن الاستجابة الكلي
+    </pre>
+  </div>
+</section>
+
+<!-- ============ 10 ERD ============ -->
+<section id="erd">
+  <div class="sec-head"><div class="num g5">10</div><h2>نموذج البيانات (ERD)</h2></div>
+  <p class="sec-sub">الإضافة الجوهرية على نظامك: ربط المحادثات بسلسلة العميل ← المبنى ← المصعد ← العقد ← التذكرة.</p>
+  <div class="diagram">
+    <div class="cap">Entity Relationship Diagram — نطاق المصاعد</div>
+    <pre class="mermaid">
+erDiagram
+  CLIENT ||--o{ BUILDING : "يملك"
+  BUILDING ||--o{ ELEVATOR : "يحوي"
+  CLIENT ||--o{ CONTRACT : "يوقّع"
+  CONTRACT }o--o{ ELEVATOR : "يغطي"
+  CLIENT ||--o{ CONTACT : "جهات تواصل (حارس/مدير مبنى)"
+  CONTACT ||--o{ CONVERSATION : "يفتح"
+  CONVERSATION ||--o{ MESSAGE : "تحوي"
+  MESSAGE ||--o| MEDIA_FILE : "🆕 مرفق"
+  DEPARTMENT ||--o{ CONVERSATION : "تُوجَّه إلى"
+  DEPARTMENT ||--o{ USER : "يضم"
+  USER ||--o{ CONVERSATION : "مسند إليه"
+  CONVERSATION ||--o{ TICKET : "تولّد"
+  ELEVATOR ||--o{ TICKET : "عليه"
+  TICKET }o--|| USER : "فني مسند"
+  TICKET ||--o{ TICKET_EVENT : "خط زمني"
+  TICKET }o--o{ SPARE_PART : "قطع مستخدمة"
+  ELEVATOR ||--o{ PM_VISIT : "صيانة وقائية"
+  TICKET ||--o| CSAT : "تقييم"
+  MEDIA_FILE {
+    uuid id PK
+    string wa_media_id
+    string mime_type
+    string storage_url
+    string thumbnail_url
+    int size_bytes
+  }
+  ELEVATOR {
+    uuid id PK
+    string code "رقم المصعد/QR"
+    string brand_model
+    int stops
+    int capacity_kg
+    date installed_at
+    enum status "working|down|maintenance"
+  }
+  TICKET {
+    uuid id PK
+    enum priority "P1_emergency|P2_down|P3_normal|P4_pm"
+    enum status "new|assigned|enroute|working|await_part|closed"
+    uuid elevator_id FK
+    uuid conversation_id FK
+    datetime sla_due_at
+  }
+  CONTRACT {
+    uuid id PK
+    enum type "شامل|غير شامل|تركيب"
+    date start_date
+    date end_date
+    int visits_per_year
+  }
+  DEPARTMENT {
+    uuid id PK
+    string name "مبيعات|صيانة|تنسيق|علاقات|مخزون"
+    json routing_keywords
+  }
+    </pre>
+  </div>
+</section>
+
+<!-- ============ 11 ROLES ============ -->
+<section id="roles">
+  <div class="sec-head"><div class="num g8">11</div><h2>مصفوفة الصلاحيات</h2></div>
+  <p class="sec-sub">من يرى ماذا — أهم نقطة طلبتها: كل قسم يشاهد رسائله فقط.</p>
+  <table>
+    <tr><th>الصلاحية</th><th>رئيس القطاع</th><th>مدير العمليات</th><th>مشرف صيانة</th><th>موظف قسم</th><th>فني</th><th>منسق</th></tr>
+    <tr><td>رؤية كل الأقسام</td><td>✅ (قراءة)</td><td>✅</td><td>قسمه</td><td>قسمه</td><td>—</td><td>✅ + غير المصنف</td></tr>
+    <tr><td>الرد على المحادثات</td><td>—</td><td>✅</td><td>✅</td><td>✅ المسند له</td><td>—</td><td>✅</td></tr>
+    <tr><td>تحويل بين الأقسام</td><td>—</td><td>✅</td><td>✅</td><td>طلب تحويل</td><td>—</td><td>✅</td></tr>
+    <tr><td>إنشاء / إسناد التذاكر</td><td>—</td><td>✅</td><td>✅</td><td>إنشاء فقط</td><td>—</td><td>✅ جدولة</td></tr>
+    <tr><td>تنفيذ وإغلاق التذاكر</td><td>—</td><td>—</td><td>✅</td><td>—</td><td>✅ تذاكره</td><td>—</td></tr>
+    <tr><td>استلام تنبيهات الطوارئ P1</td><td>✅</td><td>✅</td><td>✅ فوري</td><td>—</td><td>✅ المناوب</td><td>✅</td></tr>
+    <tr><td>قواعد التوجيه والبوت</td><td>—</td><td>✅</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>التقارير</td><td>✅ الكل</td><td>✅ الكل</td><td>فريقه</td><td>أداؤه</td><td>أداؤه</td><td>الجدولة</td></tr>
+    <tr><td>سجل المصاعد والعقود</td><td>✅</td><td>✅</td><td>✅</td><td>قراءة</td><td>قراءة تذاكره</td><td>✅</td></tr>
+  </table>
+</section>
+
+<!-- ============ 12 ROADMAP ============ -->
+<section id="roadmap">
+  <div class="sec-head"><div class="num g6">12</div><h2>خطة الترقية المرحلية (Roadmap)</h2></div>
+  <p class="sec-sub">لا تبنِ كل شيء دفعة واحدة — 4 مراحل تحافظ على عمل نظامك الحالي أثناء التطوير.</p>
+
+  <div class="phase"><div class="pdot"></div><div class="card" style="margin-bottom:18px"><h3><span class="tag g1">المرحلة 1</span> إصلاح الأساس (أسبوعان)</h3><ul>
+    <li>بناء <b>خط معالجة الوسائط</b> (القسم 02) — يحل مشكلة الصور والملصقات فوراً</li>
+    <li>إضافة جدولي <code class="k">media_file</code> و <code class="k">department</code> لقاعدة البيانات</li>
+    <li>التأكد من استخدام WhatsApp Business API الرسمي (وليس تطبيق الهاتف) لدعم تعدد الموظفين بنفس الرقم</li>
+  </ul></div></div>
+
+  <div class="phase"><div class="pdot"></div><div class="card" style="margin-bottom:18px"><h3><span class="tag g3">المرحلة 2</span> الأقسام والتوجيه (3-4 أسابيع)</h3><ul>
+    <li>صناديق وارد منفصلة بالأقسام الستة + إشعارات لكل قسم على حدة</li>
+    <li>بوت القائمة (1-5) + قاموس الكلمات المفتاحية + <b>مسار الطوارئ P1 قبل أي شيء آخر</b></li>
+    <li>الإسناد داخل القسم + رد خارج أوقات الدوام</li>
+  </ul></div></div>
+
+  <div class="phase"><div class="pdot"></div><div class="card" style="margin-bottom:18px"><h3><span class="tag g2">المرحلة 3</span> التذاكر والأصول (4-6 أسابيع)</h3><ul>
+    <li>سجل المباني والمصاعد والعقود + استيراد بياناتك الحالية</li>
+    <li>إنشاء تذكرة من المحادثة + لوحة Kanban + تطبيق/شاشة الفني</li>
+    <li>التحديثات الآلية للعميل وربط المخزون بطلبات القطع</li>
+    <li>ملصقات QR داخل الكابينات تفتح واتساب برقم المصعد جاهزاً</li>
+  </ul></div></div>
+
+  <div class="phase"><div class="pdot"></div><div class="card"><h3><span class="tag g7">المرحلة 4</span> الذكاء والتقارير (مستمر)</h3><ul>
+    <li>جدولة الصيانة الوقائية الآلية من بنود العقد + تذكيرات التجديد</li>
+    <li>تقارير: زمن أول رد، SLA، الأعطال المتكررة لكل مصعد، أداء الفنيين، CSAT</li>
+    <li>لاحقاً: رد آلي بالذكاء الاصطناعي على الأسئلة الشائعة قبل التحويل</li>
+  </ul></div></div>
+</section>
+
+<footer>
+  Blueprint ترقية نظام واتساب لشركة إدارة المصاعد — الوسائط + الأقسام + التوجيه + التذاكر + الطوارئ • جاهز للتنفيذ المرحلي
+</footer>
+
+</main>
+</div>
+
+<script>
+mermaid.initialize({
+  startOnLoad:true,
+  theme:'base',
+  themeVariables:{
+    primaryColor:'#eaf2ff', primaryBorderColor:'#2563eb', primaryTextColor:'#152238',
+    lineColor:'#1e3a5f', secondaryColor:'#fef3c7', tertiaryColor:'#fee2e2',
+    fontFamily:'IBM Plex Sans Arabic, Tahoma, sans-serif', fontSize:'13px',
+    actorBkg:'#1e3a5f', actorTextColor:'#ffffff', actorBorder:'#0f1c33',
+    signalColor:'#152238', signalTextColor:'#152238',
+    noteBkgColor:'#fef3c7', noteBorderColor:'#f59e0b'
+  },
+  flowchart:{curve:'basis', padding:12},
+  sequence:{mirrorActors:false, actorMargin:34}
+});
+</script>
+</body>
+</html>

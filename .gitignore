@@ -7,10 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# JS / build output
 node_modules
 dist
 dist-ssr
+build/
 *.local
+coverage/
+.nyc_output/
+.vite/
 
 # Editor directories and files
 .vscode/*
@@ -22,4 +27,70 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets / env (keep .env.example templates)
 .env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+ENV/
+
+# React Native / Expo
+.expo/
+.expo-shared/
+*.jks
+*.keystore
+!debug.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+web-build/
+
+# Release archives / artifacts
+*.tar
+*.tgz
+*.zip
+
+# graphify knowledge graph output (large, regenerable)
+graphify-out/
+
+# ── Monorepo layout ─────────────────────────────────────────────────────────
+# These apps are each their OWN git repo with their own remote. Adding them here
+# would store bare gitlinks (a commit SHA, no .gitmodules), so a clone of this
+# repo would contain four empty directories instead of the code.
+/AdminPortal/
+/backend/
+/elms-landing/
+/mobile-worker/
+
+# ── Never commit ────────────────────────────────────────────────────────────
+# Database dumps: real customer data, and not source.
+/backups/
+# Repo export artifacts.
+*.bundle
+# Machine-local agent state. .claude/skills is shared via scripts/install-skills.
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.kilocode/
+# Stray installers.
+*.exe
+# Built app binaries — 114MB of APK does not belong in git history, and GitHub
+# rejects blobs over 100MB outright. Ship these via EAS artifacts / releases.
+*.apk
+*.aab
+*.ipa
