@@ -183,10 +183,25 @@ docker compose exec -T api python -m app.scripts.seed_database        # roles, u
 docker compose exec -T api python -m app.scripts.seed_technician_data # worker-app technician accounts
 docker compose exec -T api python -m app.scripts.seed_demo_data       # contracts, plans, visits, work orders
 docker compose exec -T api python -m app.scripts.seed_finance_demo    # chart of accounts, cost centres, periods
+docker compose exec -T api python -m app.scripts.seed_installation_demo --projects 3   # v2 installation projects + field work
 ```
 
-Expected shape afterwards: ~8 customers, ~9 sites, ~27 elevators, 3 contracts,
-~17 maintenance plans, ~146 visits, ~141 work orders, plus the finance ledger.
+Expected shape afterwards: ~8 customers, ~9 sites, ~27 elevators, 3 maintenance
+contracts, ~17 maintenance plans, ~146 visits, ~141 work orders, plus the finance
+ledger.
+
+`seed_installation_demo` covers the module the others miss. It drives the app's
+own functions (`create_project_from_contract` → `provision_project` →
+`WorkOrderService` → `recompute_project_stages`), so each project comes out as a
+genuine v2 project: the 4-stage spine with its flags and both blockers per stage,
+a 4-part payment plan with the **first payment collected** (which is what unlocks
+stage 1 — leave it uncollected and the stage sits at `awaiting_payment` while the
+finance blocker stays raised), tasks pinned to stages, and several of them
+dispatched as `installation` work orders assigned to a real installation
+technician. That last part is what makes them appear in the worker app's
+«مهام التركيبات» screen and on `/work-orders/my-tasks`.
+
+Per project: 4 stages · 12 flags · 8 blockers · 4 payments · 7 tasks · 3 dispatched.
 
 **`seed_demo_flow` must NOT be run here.** It guards itself against any database
 whose host is not localhost, by design: *"This script deletes rows. It must never
