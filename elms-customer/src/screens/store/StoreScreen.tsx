@@ -273,10 +273,10 @@ export function StoreScreen() {
 
           <Text style={styles.productSummary}>{product.summary}</Text>
 
+          {/* The star and review count are gone: the rating was 4.60 on every
+              product and there is no reviews table for a customer to write into.
+              Delivery is a real fact, so it stays. */}
           <View style={styles.ratingRow}>
-            <Text style={styles.ratingText}>({product.reviewCount})</Text>
-            <Text style={styles.ratingText}>{product.rating.toFixed(1)}</Text>
-            <Ionicons name="star" size={14} color="#FBBF24" />
             <Text style={styles.metaText}>{product.deliveryLabel}</Text>
           </View>
 
@@ -303,9 +303,7 @@ export function StoreScreen() {
             </Pressable>
 
             <View style={styles.priceWrap}>
-              {product.originalPrice ? (
-                <Text style={styles.originalPrice}>{formatCurrency(product.originalPrice)}</Text>
-              ) : null}
+              {/* No struck-through "was" price: it was this price times 1.08. */}
               <Text style={styles.currentPrice}>{formatCurrency(product.price)}</Text>
             </View>
           </View>

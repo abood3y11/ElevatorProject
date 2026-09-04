@@ -47,7 +47,11 @@ import {
   VisitDetail,
 } from "../types/models";
 
-const useMocks = (process.env.EXPO_PUBLIC_USE_MOCKS ?? "true") !== "false";
+// Mocks are OPT-IN, not the default. Defaulting to true meant an unconfigured
+// tenant build showed invented products and accepted "orders" that went nowhere
+// — a demo indistinguishable from the real app, shipped under the tenant's name.
+// Set EXPO_PUBLIC_USE_MOCKS=true deliberately to get the old behaviour.
+const useMocks = (process.env.EXPO_PUBLIC_USE_MOCKS ?? "false") === "true";
 
 function delay<T>(data: T, ms = 300): Promise<T> {
   return new Promise((resolve) => {

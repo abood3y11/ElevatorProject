@@ -110,17 +110,12 @@ export function ProductDetailScreen() {
       </LinearGradient>
 
       <View style={styles.priceCard}>
+        {/* The star chip and the struck-through "was" price were removed: the
+            rating was 4.60 on every product in the catalogue, the review count
+            was invented, there is no reviews table anywhere in the schema, and
+            the old price was the current one times 1.08. None of it was data. */}
         <View style={styles.priceHeader}>
-          <View style={styles.ratingChip}>
-            <Ionicons name="star" size={14} color="#FBBF24" />
-            <Text style={styles.ratingChipText}>
-              {product.rating.toFixed(1)} ({product.reviewCount})
-            </Text>
-          </View>
           <View style={styles.priceWrap}>
-            {product.originalPrice ? (
-              <Text style={styles.originalPrice}>{formatCurrency(product.originalPrice)}</Text>
-            ) : null}
             <Text style={styles.currentPrice}>{formatCurrency(product.price)}</Text>
           </View>
         </View>
