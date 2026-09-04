@@ -56,16 +56,37 @@ as it did before. It is fine to stop there and continue later.
 **Rehearse on the test box first** (`31.220.111.147`, mock data, no WhatsApp, no
 S3, no TLS — see `VPS_OPT_02.md`). The script is identical on both boxes.
 
+Neither server has `psql`, `pg_dump` or `alembic` on the host, and postgres is
+not published to the host either — everything lives in the compose stack. The
+script detects that and routes every command through `docker compose`. You do
+**not** need to export `DATABASE_URL`.
+
 ```bash
 ssh root@<host>
 cd /opt/elms/server-ELMS
+git checkout feat/public-contract-qr     # the branch carrying this work
 git pull --ff-only
-
-export DATABASE_URL='postgresql://postgres:<pw>@<db-host>:5432/elms_db'
 
 bash scripts/deploy_multitenant.sh --check    # inspect, change nothing
 bash scripts/deploy_multitenant.sh            # do it
 ```
+
+### Rehearsed on 2026-09-04
+
+The test box went from `install_stage_moves_0039` / 114 tables to `saas_0003` /
+128 tables in one run: 118 `company_id` columns, 117 forced policies, 711 → 717
+rows (the six new rows are the seeded company, plans and subscription — nothing
+was lost), and the API answered `8 customers / 150 work orders / 27 elevators`
+through the policies as the restricted role. Two real defects were found and
+fixed by that rehearsal, both of which would have surfaced mid-way through a
+production change:
+
+* the script assumed host `psql`; there is none, on either box;
+* `docker compose exec api alembic upgrade head` runs against the image that is
+  **already running**, which still holds the old revision files. It printed no
+  error and left the head untouched. The build now happens first and the
+  migration runs in a `docker compose run --rm` container from the new image,
+  with a guard that aborts if the head does not actually move.
 
 `--check` prints the table count, row count, how many `company_id` columns and
 RLS policies already exist, whether the role exists and whether
