@@ -43,7 +43,16 @@ services:
     environment:
       DEBUG: "True"
       ENVIRONMENT: development
+      # Admin connection: alembic and admin scripts. Owns the tables, bypasses
+      # row-level security.
       DATABASE_URL: postgresql://postgres:admin@db:5432/elms_db
+      # Runtime connection: the non-superuser elms_app role, which the 117
+      # tenant_isolation policies actually bind (SaaS spec 2.5). Unset here
+      # because the password is not committed - create the role with
+      #   python backend/scripts/setup_tenant_role.py
+      # and pass the URL through the environment. While it is unset the app
+      # falls back to DATABASE_URL and warns that isolation is NOT enforced.
+      APP_DATABASE_URL: ${APP_DATABASE_URL:-}
       CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://localhost:8081,http://localhost:19006
       JWT_SECRET_KEY: super-secret-key-change-in-production
       REDIS_ENABLED: "true"
@@ -67,7 +76,14 @@ services:
     environment:
       DEBUG: "True"
       ENVIRONMENT: development
+      # Admin connection: alembic and admin scripts. Owns the tables, bypasses
+      # row-level security.
       DATABASE_URL: postgresql://postgres:admin@db:5432/elms_db
+      # Runtime connection: the non-superuser elms_app role (SaaS spec 2.5).
+      # The worker needs this at least as much as the api does - the 17
+      # scheduled jobs scan the whole database, so they are the largest
+      # cross-tenant leak surface in the system.
+      APP_DATABASE_URL: ${APP_DATABASE_URL:-}
       JWT_SECRET_KEY: super-secret-key-change-in-production
       REDIS_ENABLED: "true"
       REDIS_URL: redis://redis:6379/0
