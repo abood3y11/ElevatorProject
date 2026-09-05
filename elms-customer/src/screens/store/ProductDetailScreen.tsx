@@ -45,6 +45,10 @@ export function ProductDetailScreen() {
 
   const product = productQuery.data;
   const useLightHeroText = !appTheme.isDark;
+  // `inStock` is absent on older payloads; treat that as available rather than
+  // hiding the buy button on every product the moment the app runs against an
+  // API that has not been deployed yet.
+  const soldOut = product.inStock === false;
 
   return (
     <Screen>
@@ -151,9 +155,16 @@ export function ProductDetailScreen() {
         <Text style={styles.purchaseSubtitle}>
           واجهة الدفع التالية تعرض العنوان، طريقة السداد، والتقدير الكامل للتوصيل والضريبة.
         </Text>
+        {soldOut ? (
+          <Text style={styles.soldOutNotice}>
+            هذه القطعة غير متوفرة في المخزون حالياً. تواصل مع فريق المبيعات لطلب توريدها.
+          </Text>
+        ) : null}
         <View style={styles.purchaseActions}>
           <Pressable
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, soldOut && styles.buttonDisabled]}
+            disabled={soldOut}
+            accessibilityState={{ disabled: soldOut }}
             onPress={() => addCartMutation.mutate()}
           >
             <Text style={styles.secondaryButtonText}>
@@ -161,7 +172,9 @@ export function ProductDetailScreen() {
             </Text>
           </Pressable>
           <Pressable
-            style={styles.primaryButton}
+            style={[styles.primaryButton, soldOut && styles.buttonDisabled]}
+            disabled={soldOut}
+            accessibilityState={{ disabled: soldOut }}
             onPress={() => navigation.navigate("StoreCheckout", { productId: product.id })}
           >
             <Text style={styles.primaryButtonText}>انتقل للدفع</Text>
@@ -442,6 +455,16 @@ function createStyles(appTheme: ReturnType<typeof useAppTheme>) {
     purchaseActions: {
       flexDirection: "row-reverse",
       gap: 10,
+    },
+    soldOutNotice: {
+      color: appTheme.colors.textSecondary,
+      fontSize: 12,
+      lineHeight: 19,
+      textAlign: "right",
+      writingDirection: "rtl",
+    },
+    buttonDisabled: {
+      opacity: 0.45,
     },
     primaryButton: {
       flex: 1,

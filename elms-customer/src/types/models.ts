@@ -425,6 +425,10 @@ export interface StoreProduct {
   originalPrice?: number;
   rating: number;
   reviewCount: number;
+  /** Units the shop can still promise: on hand minus what is already reserved. */
+  stock?: number;
+  /** False means checkout WILL refuse this line — do not let it be ordered. */
+  inStock?: boolean;
   stockLabel: string;
   deliveryLabel: string;
   summary: string;
