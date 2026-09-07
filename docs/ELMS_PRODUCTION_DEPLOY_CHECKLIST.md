@@ -47,6 +47,38 @@ Changing a job's TIME, technician, team or priority is unaffected either way.
 
 Remove this section once both sides are live in production.
 
+### Maintenance visit dates — order of operations on production
+
+The generator used to overwrite each contract's day with the day the cron ran,
+so whole batches landed on one date. The fix ships in the backend; the rows it
+already wrote need a separate, reviewed correction.
+
+**This order, and not another.** A capacity or workload reading taken before
+step 6 measures the clustering, not the operation — on the dev database the same
+month looked like 95 visits in one day when the real busiest day was 8.
+
+- [ ] 1. deploy the backend (`56f158e` onward) — nothing below is safe first
+- [ ] 2. dry run, look only:
+      `docker compose exec api python scripts/verify/report_flattened_visits.py`
+- [ ] 3. emit a PRODUCTION artifact:
+      `... report_flattened_visits.py --emit /tmp/flattened.json`
+- [ ] 4. read it — check the safe/review/completed split and the correction range
+- [ ] 5. apply that exact artifact:
+      `... report_flattened_visits.py --apply /tmp/flattened.json`
+- [ ] 6. verify: visit dates equal canonical, work orders match their visit,
+      zero reschedule rows created, zero completed rows touched
+- [ ] 7. only now: `docker compose exec api python scripts/verify/report_capacity.py`
+
+**Never reuse an artifact from another database.** The ids in a dev artifact are
+dev evidence. The apply step intersects the artifact with a live re-scan, so
+foreign ids are reported as skipped rather than applied — but produce a fresh
+artifact on the machine you are correcting, even if the count matches.
+
+**The correction is not a reschedule.** It writes no `maintenance_visit_reschedules`
+row, because nobody moved these visits — they were generated wrong. Routing it
+through the reschedule service would repair the date while holding the
+customer's anchor on the bad one.
+
 ## 1. Infrastructure Ready
 
 - [ ] Linux server or managed environment prepared
