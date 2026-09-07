@@ -15,6 +15,38 @@ This checklist is for a real ELMS production rollout with:
 
 Use it before first launch, and again before every major release.
 
+## 0. Release Coupling — read before deploying anything
+
+Some changes are only safe to ship together. Deploying one half alone is a known
+regression, not a risk to weigh up.
+
+### Maintenance rescheduling — backend and AdminPortal are COUPLED
+
+**Do not deploy the maintenance rescheduling backend before the AdminPortal
+handoff is finished and deployed with it.**
+
+| side | repo | commits |
+| --- | --- | --- |
+| backend | server-ELMS | `a4e5c77`, `3411e41`, `5fee91c` |
+| AdminPortal | client-ELMS | `1c3b84b` |
+
+Both sides are committed. They must reach production in the same release, in
+either order — the coupling is that neither is correct alone.
+
+Why: the backend refuses a calendar-day change on a work order that carries a
+maintenance visit (`PUT /work-orders` → 400), because moving a visit's day has
+to be recorded through `POST /maintenance/visits/{id}/reschedule`. The
+AdminPortal change is what sends operators down that path.
+
+* backend alone → an operator editing a maintenance date gets a 400 and no way
+  forward; `WorkOrderEditDialog` still posts the day change to `PUT`.
+* AdminPortal alone → the reschedule dialog calls an endpoint that is not there
+  yet, so the day change fails at the network instead of at validation.
+
+Changing a job's TIME, technician, team or priority is unaffected either way.
+
+Remove this section once both sides are live in production.
+
 ## 1. Infrastructure Ready
 
 - [ ] Linux server or managed environment prepared
