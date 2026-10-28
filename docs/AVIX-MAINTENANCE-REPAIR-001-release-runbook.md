@@ -1,7 +1,15 @@
-# AVIX-MAINTENANCE-REPAIR-001 — production release runbook (PREPARED, NOT EXECUTED)
+# AVIX-MAINTENANCE-REPAIR-001 — production release runbook
 
-Status: final release candidate (2026-10-28). Nothing below has run on production; it runs only after an explicit
-Production GO from the owner. Production facts were read with read-only commands on 2026-10-28 (re-checked after
+**Executed 2026-10-28 15:00–16:08 UTC under the owner's conditional Production GO — SUCCESS.** Backend `f0a2f37`,
+alembic `repair_0002`, AdminPortal `a79a52e`. Backup `backups/elms-db-20261028-152910-preRepair.dump`, restored in
+isolation with 13/13 counts equal; rollback images `*-rollback:pre-repair-20261028-152910`. Migration 16.6 s incl.
+container start under `lock_timeout=5s`. 30-minute watch: 0 api/worker errors, 0 5xx, 0 WhatsApp sends, 0 new work
+orders/movements. Logged-in smoke tests (§6) were left to an operator with an account. Execution notes: run server
+scripts from a FILE with stdin closed (`docker compose exec -T` swallows a piped script), strip CR, and never
+`grep -q` under `pipefail`. Two extra identical dumps from aborted gate runs (`…-150028-…`, `…-150307-…`, mode 600)
+remain in `backups/`.
+
+Original status: final release candidate (2026-10-28), run only after an explicit Production GO from the owner. Production facts were read with read-only commands on 2026-10-28 (re-checked after
 D2: backend `bf3d531` clean, alembic `saasuse_0001`, api/worker/web up, portal content = `07826ad`).
 
 Decisions closed by the owner on 2026-10-28: **D1** — `769508a` stays out; **D2** — installation is confirmed
