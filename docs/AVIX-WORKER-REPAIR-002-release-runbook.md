@@ -1,6 +1,6 @@
 # AVIX-WORKER-REPAIR-002 — release runbook (AVIX Workers repair & parts)
 
-Status: **candidate, not deployed.** Prepared 2026-10-29. Nothing here has run on production; every production
+Status: **candidate, not deployed.** Prepared 2026-10-29; release gates re-checked 2026-10-30 (§8, §11). Nothing here has run on production; every production
 step needs its own authorization. Builds on AVIX-MAINTENANCE-REPAIR-001 (deployed 2026-10-28).
 
 What it delivers: a technician sees a repair follow-up in «مهامي», reads its parts, confirms on site what he fitted
@@ -15,7 +15,7 @@ Built from what production runs, never from `main`:
 |---|---|---|---|---|
 | Backend (`server-ELMS`) | `f0a2f37` | `release/avix-worker-repair-002` | `c2de317` | 7 (below) |
 | AdminPortal (`client-ELMS`) | `bbcc36d` (deployed 2026-10-29, sticky filters) | `release/avix-worker-repair-002` | `c25ba33` | 2 |
-| AVIX Workers (OTA, runtime `2.0.0`, branch `preview`) | `65256605` per the last recorded publish — **confirm with `eas update:list --branch preview` before publishing** | `release/avix-worker-repair-002` | `94f0d6de` | 5 |
+| AVIX Workers (OTA, runtime `2.0.0`, branch `preview`) | `65256605` — update group `3d4d4952-85d9-4916-b069-3beca650fdf0`, read from EAS 2026-10-30 | `release/avix-worker-repair-002` | `94f0d6de` | 5 |
 | Database | `repair_0002` | — | `repair_0003` | 1 migration |
 
 Backend commits (cherry-picked with `-x` from `feature/worker-repair-parts`; the code is byte-identical to it):
@@ -46,13 +46,36 @@ Artifacts (SHA-256):
 
 The OTA has no artifact: it is published from a clean checkout of `94f0d6de` on the night.
 
+Binary for phones still on runtime `1.0.0` — **no new build is needed**; the existing EAS build is the one:
+
+| Build | Value |
+|---|---|
+| EAS build id | `270ff52b-e3d8-435f-a5fa-1bb8a2ce17f4` (profile `preview`, 2026-10-18, commit `8f7eabf0`, SDK 57) |
+| Package / version | `com.elms.worker`, versionName `1.0.0`, versionCode `17`, minSdk 24, targetSdk 36 |
+| Embedded update config | runtime `2.0.0`, channel header `expo-channel-name: preview`, `u.expo.dev/be346236…` |
+| Signing certificate SHA-256 | `b984da9fc5caf659abe6e1aaaeb6e6ff226d89bd478f1b99138b0d3652c0e3db` |
+| APK SHA-256 | `835aa784dd3798b95a10cbd1abc40914aeb31fcd25c8f015019d38e82896e535` (136,469,099 bytes) |
+
+Native compatibility with this release: `eas fingerprint:compare --build-id 270ff52b…` against `94f0d6de` differs
+only in local, untracked inputs (CRLF `eas.json`, gradle outputs under `android/`), and `git diff 8f7eabf0..94f0d6de`
+touches no native file (no `android/`, `app.json`, `eas.json`, package files) — every change is under `src/`.
+
+**The EAS download link of this APK expires 2026-11-01.** A copy was saved locally on 2026-10-30; keep it somewhere
+durable (or rebuild the same profile at `8f7eabf0`). The old runtime `1.0.0` build (also versionCode 17) is the same
+package; install the new APK over it on one phone first to confirm Android accepts it as an update (same signer
+expected — EAS-managed keystore).
+
 ## 2. Preconditions (stop if any fails)
 
 - Backend HEAD = `f0a2f37`, clean tree, branch `release/marketplace-console`; `alembic current` = `repair_0002`.
 - Live portal tree = `bbcc36d` exactly (1,267 files, file-by-file SHA-256 compare as in the 2026-10-29 deploy).
-- `eas update:list --branch preview` shows the last publish and its commit; it must be an ancestor of `94f0d6de`
-  (else rebase the five app commits onto it and re-run §8 app checks). `.github/workflows/eas-update.yml`
-  publishes on every push to `main` — **do not push or merge to `main` until step 5.6**, or CI ships the OTA early.
+- `eas update:list --branch preview` still shows group `3d4d4952…` (commit `65256605`) as the latest runtime
+  `2.0.0` publish; if anything newer appears, it must be an ancestor of `94f0d6de` (else rebase the five app
+  commits onto it and re-run the app checks).
+- **CI publishes on every push to `main`, to 100 %.** `.github/workflows/eas-update.yml` runs `eas update --branch
+  preview` on `push: main` with no rollout percentage. Before merging the app branch: disable that workflow
+  (GitHub › Actions › «EAS Update (OTA)» › Disable workflow), merge, publish by hand with a rollout (§5.6), and
+  re-enable it only after the rollout reaches 100 %. Any push to `main` before that ships the release untested.
 - No long transaction (`pg_stat_activity`, as in REPAIR-001 §2); outside working hours.
 
 ## 3. Backups and restore readiness
@@ -81,8 +104,26 @@ The supervisor's way out for a held repair: settle the parts (portal «تأكي�
 storekeeper return), then «اعتماد إغلاق الإصلاح» stating the test result. The server refuses the approval while parts
 are unsettled, and neither status endpoint can close a repair follow-up.
 
-Finding phones that have not updated: every launch rewrites `user_devices.app_version`; the new build writes
-`<version>/rt<runtime>/<update id|embedded>/rf1`.
+Phones in the field (EAS Update insights, unique users per update, read 2026-10-30):
+
+| Update group (branch `preview`) | Runtime | Android users, last 7 days | last 30 days |
+|---|---|---|---|
+| `3d4d4952` (`65256605`, latest) | `2.0.0` | 1 | 2 |
+| `02e6a267` (AVIX theme) | `2.0.0` | 0 | 1 |
+| `89b17325` (latest for runtime `1.0.0`) | `1.0.0` | 4 | 5 |
+| `47a7f528` | `1.0.0` | 0 | 2 |
+
+So most active phones are still on the SDK 54 binary and **will not receive this OTA**. These counts miss phones that
+run the bundle embedded in their APK and never downloaded an update, and phones without network to `u.expo.dev`
+(the app has no `expo-insights`, so EAS has no app-wide count). The full count needs the production query below
+(prepared, not run — production reads were not authorized in this session) plus the technician roster.
+
+The already-installed app reports only `app_version` = `1.0.0` for every binary, so `user_devices` cannot tell
+runtime `1.0.0` from `2.0.0` until a phone runs the new JS. What it can tell: which technicians have a phone
+registered and when it was last seen — every technician seen recently whose row does not end in `/rf1` after the
+OTA is either on runtime `1.0.0` or has not relaunched; check the phone or install the APK.
+
+The new build writes `<version>/rt<runtime>/<update id|embedded>/rf1` on every launch.
 
 ```sql
 -- technicians whose latest device row is not on the repair-flow build
@@ -111,11 +152,12 @@ Gap: a phone that never registered for push (permission denied) has no row. `aud
 4. `docker compose up -d --no-deps api worker`; health 200.
 5. AdminPortal: archive deploy of `c25ba33` with the live-tree check against `bbcc36d`; build web; bundle
    contains «طلبات الإرجاع» and «اعتماد إغلاق الإصلاح».
-6. AVIX Workers OTA, from a clean checkout of `94f0d6de` (`npm ci`, `tsc`, jest): `eas update --branch preview
-   --environment preview --message "AVIX-WORKER-REPAIR-002"`, **after** the backend is live. Staged: start with a
-   rollout percentage (EAS Update rollouts) to a few devices / the pilot technicians, then widen (§6 gates).
-7. APK (runtime `2.0.0`) for any phone still on runtime `1.0.0` — `eas build --profile preview`, installed by hand;
-   not needed for phones already on runtime `2.0.0`.
+6. AVIX Workers OTA, from a clean checkout of `94f0d6de` (`npm ci`, `tsc`, jest), **after** the backend is live
+   and with the CI workflow disabled (§2): `eas update --branch preview --environment preview --message
+   "AVIX-WORKER-REPAIR-002" --rollout-percentage 10`. Run the §11 device checklist on the pilot phone; widen with
+   `eas update:edit` (rollout percentage) to 50 then 100 (§6 gates). Back out with `eas update:revert-update-rollout`.
+7. Runtime `1.0.0` phones: install the existing runtime `2.0.0` APK (§1, build `270ff52b`) by hand or by link; on
+   first launch it fetches the OTA from `preview`. Not needed for phones already on runtime `2.0.0`.
 
 ## 6. Rollout gates
 
@@ -161,10 +203,15 @@ Done, and what each proves:
   timeouts, downgrade and re-upgrade; pre-commit migration suite 68/68.
 - **Old code on the new schema**: `f0a2f37` issued, consumed and returned on `repair_0003`, never wrote the new
   table; its own repair RLS suite 5/5 there.
-- **Full backend suite**: the feature branch run (4,268 passed) failed exactly the same 117 + 69 test IDs as
-  unmodified `main` (`comm` on the IDs: none only on the feature branch). The run on the release branch was
-  stopped at 33 % by the machine running out of memory; for the part it covered its result line is identical,
-  test by test, to the feature run. **Re-run it to the end before the deploy.**
+- **Full backend suite on the release branch `c2de317`** (2026-10-30, two sequential chunks against the local
+  `elms_test` database, WhatsApp/AWS blanked, the conftest send-blocker on): `tests/integration` 2,487 passed /
+  116 failed / 69 errors / 20 skipped; the rest 1,787 passed / 1 failed / 31 skipped — **4,274 passed, 117 failed,
+  69 errors**. The 186 failing IDs (from the JUnit XML) are **identical** to the same files run at production
+  `f0a2f37` (186 = 186, none only on the release) and to `main` on 2026-10-29. No failing test is in inventory,
+  parts or repair code; the largest groups are installations (~90), SaaS usage (26), WhatsApp number ownership,
+  credential encryption, marketplace — pre-existing, unchanged by this release.
+- **Re-run under `elms_app` 2026-10-30** on a fresh database migrated `repair_0002 → repair_0003` with the
+  production lock timeouts (then dropped): RLS 9/9, concurrency 4/4, feature 27/27 — 40/40.
 - **AVIX Workers**: `tsc` clean, 162 unit tests, Android JS bundle export OK; web build driven headless against a
   local API under RLS: feed chips and cards, parts section, field install with a report, return request,
   withdraw, test result, closing blockers; RTL and LTR. AdminPortal `npm run check` (types, lint 0 errors,
@@ -172,13 +219,11 @@ Done, and what each proves:
 
 Not done — gate 2 stays open:
 
-- **No physical phone and no emulator run.** No device was attached; a local release APK (runtime `2.0.0`, debug
-  keystore, API on the host) and the `Pixel_6` emulator were started, but the machine ran out of memory and both
-  were stopped before the APK finished. Camera capture, photo upload from a phone, the offline retry on a real
-  network drop, and completing from the phone are therefore **unverified on a device**. Run them on one pilot
-  phone with the OTA before widening the rollout.
-- Which update the phones run now is not known from here (`eas update:list` needs the Expo account); the number
-  of phones still on runtime `1.0.0` is not known either — the §4 query answers it after the backend is live.
+- **No physical phone and no emulator run.** No device was attached on 2026-10-29 or 2026-10-30. The local APK
+  build and the `Pixel_6` emulator were stopped for lack of memory on 2026-10-29, and on 2026-10-30 the machine
+  had under 2 GB free, so they were not started again. Camera capture, photo upload from a phone, the offline
+  retry on a real network drop and completing from the phone are **unverified on a device**: run §11 on one pilot
+  phone with the OTA at the first rollout step, before widening.
 
 ## 9. Rollback
 
@@ -193,3 +238,25 @@ Not done — gate 2 stays open:
 ## 10. Out of scope (next release)
 
 Per-elevator parts history, serial/batch tracking and cost reports (roadmap phase 2) — no schema for them here.
+
+## 11. Device checklist (gate 2 — pilot phone, first rollout step)
+
+On one Android phone with the runtime `2.0.0` APK, after the backend is live and the OTA is at its first rollout
+percentage. Internal test job only (a test customer/elevator, no customer messages); a storekeeper and a
+supervisor at the portal. Record the phone model, Android version and the `app_version` row it wrote.
+
+| # | Step | Pass when |
+|---|---|---|
+| 1 | Log in as the pilot technician | lands on «مهامي»; `user_devices.app_version` ends in `/rf1` with the OTA's update id |
+| 2 | «مهامي» | the test follow-up shows the «إصلاح وتركيب قطع» chip, the origin order and the fault |
+| 3 | Open it | the parts section lists each part: issued, fitted, pending return |
+| 4 | Fit 1 of 2 with a **camera** photo | photo taken in-app, upload completes, fitted = 1; audit `PART_CONSUMED` `confirmationSource: field` |
+| 5 | Partial install | 1 still in hand; no second consumption |
+| 6 | Airplane mode on, confirm again, off | the app retries; the server answers the replay with 200 and adds nothing |
+| 7 | Repeat the same confirmation | still 1 fitted; `inventory_movements` has exactly one `consume` for it |
+| 8 | Ask back the remaining 1 | return request `pending`; stock unchanged until the storekeeper receives it once |
+| 9 | Record the elevator test «ناجح» | the checklist line `repair_test_result=passed` is stored |
+| 10 | Complete | before the store receipt: refused with the reason; after it: `completed`; parent order unchanged |
+
+Fail any step → set the rollout to 0 % (`eas update:revert-update-rollout`), keep the backend (it serves the old app
+through the held-for-review path), and fix before retrying.
