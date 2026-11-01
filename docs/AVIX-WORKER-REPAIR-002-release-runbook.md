@@ -1,6 +1,7 @@
 # AVIX-WORKER-REPAIR-002 — release runbook (AVIX Workers repair & parts)
 
-Status: **candidate, not deployed.** Prepared 2026-10-29; release gates re-checked 2026-10-30 (§8, §11). Nothing here has run on production; every production
+Status: **candidate, not deployed. NO-GO for general distribution; next step is the controlled pilot (§12).**
+Prepared 2026-10-29; release gates re-checked 2026-10-30 (§8, §11); pilot readiness 2026-11-01 (§12). Nothing here has run on production; every production
 step needs its own authorization. Builds on AVIX-MAINTENANCE-REPAIR-001 (deployed 2026-10-28).
 
 What it delivers: a technician sees a repair follow-up in «مهامي», reads its parts, confirms on site what he fitted
@@ -60,8 +61,9 @@ Native compatibility with this release: `eas fingerprint:compare --build-id 270f
 only in local, untracked inputs (CRLF `eas.json`, gradle outputs under `android/`), and `git diff 8f7eabf0..94f0d6de`
 touches no native file (no `android/`, `app.json`, `eas.json`, package files) — every change is under `src/`.
 
-**The EAS download link of this APK expires 2026-11-01.** A copy was saved locally on 2026-10-30; keep it somewhere
-durable (or rebuild the same profile at `8f7eabf0`). The old runtime `1.0.0` build (also versionCode 17) is the same
+The EAS download link of this APK expired 2026-11-01. The copy is kept in `C:\Dev\AVIX-Releases\avix-workers\`
+(with the previous runtime `1.0.0` APK and `SHA256SUMS`; README there). Every worker APK found on this machine,
+versionCode 9 to 17, carries the same signing certificate `b984da9f…`. The old runtime `1.0.0` build (also versionCode 17) is the same
 package; install the new APK over it on one phone first to confirm Android accepts it as an update (same signer
 expected — EAS-managed keystore).
 
@@ -116,7 +118,15 @@ Phones in the field (EAS Update insights, unique users per update, read 2026-10-
 So most active phones are still on the SDK 54 binary and **will not receive this OTA**. These counts miss phones that
 run the bundle embedded in their APK and never downloaded an update, and phones without network to `u.expo.dev`
 (the app has no `expo-insights`, so EAS has no app-wide count). The full count needs the production query below
-(prepared, not run — production reads were not authorized in this session) plus the technician roster.
+plus the technician roster.
+
+Production, read-only (2026-11-01, `BEGIN READ ONLY`): **7 active technicians, 7 with a registered phone, 6 seen in
+the last 14 days — all 6 report `app_version` = `1.0.0`**, i.e. runtime unknown: the installed JS writes the same
+value on both binaries. Classification today: runtime `2.0.0` known = 0, runtime `1.0.0` known = 0, unknown = 6
+(+1 not seen). EAS insights (above) suggest about 1 of them is on runtime `2.0.0`. To settle it before the general
+rollout: look at each phone (Settings › Apps › ELMS Worker shows the install date; an install before 2026-10-18 is
+runtime `1.0.0`), or install the runtime `2.0.0` APK on every technician phone, which is harmless on a phone that
+already has it.
 
 The already-installed app reports only `app_version` = `1.0.0` for every binary, so `user_devices` cannot tell
 runtime `1.0.0` from `2.0.0` until a phone runs the new JS. What it can tell: which technicians have a phone
@@ -152,10 +162,12 @@ Gap: a phone that never registered for push (permission denied) has no row. `aud
 4. `docker compose up -d --no-deps api worker`; health 200.
 5. AdminPortal: archive deploy of `c25ba33` with the live-tree check against `bbcc36d`; build web; bundle
    contains «طلبات الإرجاع» and «اعتماد إغلاق الإصلاح».
-6. AVIX Workers OTA, from a clean checkout of `94f0d6de` (`npm ci`, `tsc`, jest), **after** the backend is live
-   and with the CI workflow disabled (§2): `eas update --branch preview --environment preview --message
-   "AVIX-WORKER-REPAIR-002" --rollout-percentage 10`. Run the §11 device checklist on the pilot phone; widen with
-   `eas update:edit` (rollout percentage) to 50 then 100 (§6 gates). Back out with `eas update:revert-update-rollout`.
+6. Pilot first (§12): the pilot phone gets the release through its own channel, never through `preview`. A
+   rollout percentage cannot target one phone — it picks devices at random among compatible ones — so it is not
+   used for the pilot.
+   General rollout only after the pilot report is approved, with the CI workflow disabled (§2): `eas update
+   --branch preview --environment preview --message "AVIX-WORKER-REPAIR-002" --rollout-percentage 10`; widen with
+   `eas update:edit` to 50 then 100 (§6 gates). Back out with `eas update:revert-update-rollout`.
 7. Runtime `1.0.0` phones: install the existing runtime `2.0.0` APK (§1, build `270ff52b`) by hand or by link; on
    first launch it fetches the OTA from `preview`. Not needed for phones already on runtime `2.0.0`.
 
@@ -260,3 +272,60 @@ supervisor at the portal. Record the phone model, Android version and the `app_v
 
 Fail any step → set the rollout to 0 % (`eas update:revert-update-rollout`), keep the backend (it serves the old app
 through the held-for-review path), and fix before retrying.
+
+## 12. Controlled pilot (one technician, one supervisor, one storekeeper)
+
+Pilot case: customer **CUS1002** (ABDULKARIM1, company `C1`, a test customer), site «الاسكان», elevator
+`ELV1002-1-1`, contract `CON1002-1-1` (active, `full` — labor and parts covered, no customer approval for covered
+repairs); technician **عبدالكريم** (user `9b4a6a36-1ec5-4e98-8393-8e8b56f86751`, technician
+`feb4ceef-2db4-4b08-9713-0e543e9453e4`, active in `C1`, phone seen 2026-11-01, `app_version` `1.0.0`). Parent: the
+completed visit `WO1002-1-1-2` (2026-10-22, by the same technician). It already carries the owner's own repair
+request of 2026-10-29 («تاكل الحبال», not covered, waiting for the customer) — leave it alone; the pilot uses its
+own request.
+
+**Targeting one phone.** The pilot APK is built from local branch `pilot/avix-worker-repair-002` (`0c7c6acb` =
+`94f0d6de` + an `eas.json` profile `pilot` that extends `preview` with channel `pilot`): `eas build --platform
+android --profile pilot`. Its embedded JS is the release itself, so the phone needs no OTA; the `pilot` channel maps
+to no branch, so nothing published on `preview` reaches it and nothing published for it reaches anyone else. EAS
+signs it with the same managed keystore (`b984da9f…`), so it installs over the current app. Back to normal: install
+the runtime `2.0.0` preview APK (§1) over it. Nothing is published to `preview` and CI is not involved.
+
+**Order** (each step needs its own authorization; stop at the first failure):
+
+1. Production state and backup (§2, §3).
+2. Isolated restore of that backup; counts and `alembic_version` = `repair_0002`.
+3. Old-app compatibility re-checked on the candidate (§4 table; done locally, §8).
+4. Backend `c2de317` + `repair_0003` (§5.2–5.4).
+5. AdminPortal `c25ba33` (§5.5; the live tree must still be `bbcc36d` first).
+6. Pilot test data (below), then the pilot APK on the test phone only.
+7. The real repair cycle with the test data (checklist below).
+8. Monitoring during the pilot (§7): api 5xx, `PART_*` audits, `inventory_movements` for the pilot items,
+   `REPAIR_COMPLETION_HELD_FOR_REVIEW`.
+9. Pilot report (results per step, stock before/after, audit ids) — general distribution only after it is approved.
+
+**Pilot test data** (after step 5, by the supervisor in the portal, or by the prepared script
+`pilot_create.py` run in the api container — same service calls as the endpoints, guarded to CUS1002 / عبدالكريم,
+no parts, no WhatsApp):
+- `WO1002-1-1-2` › «طلبات الإصلاح» › new request: diagnosis «[تجربة AVIX-WORKER-REPAIR-002] اختبار إصلاح عطل
+  واستبدال قطعة غيار في المصعد», involves parts = yes, major = no, follow-up = yes → covered by `CON1002-1-1`, no
+  customer approval → «اعتماد» creates one `corrective_maintenance` follow-up linked by `parent_work_order_id`.
+- Assign the follow-up to عبدالكريم (only an in-app/push notice to him; no customer message).
+- Storekeeper: a part requirement of 2 units of one cheap item on the follow-up; reserve and issue 2 to him. This
+  is a real stock movement on the pilot item — choose an item and record its stock before and after.
+- A second follow-up (same steps, diagnosis tagged «مسار التطبيق القديم») for the old-app path.
+
+**Checklist** — §11 steps 1–10 on the pilot phone (step 1: the pilot APK writes `…/rt2.0.0/embedded/rf1`), plus:
+
+| # | Step | Pass when |
+|---|---|---|
+| 11 | Storekeeper «المستودع › طلبات الإرجاع» receives the asked-back unit | one `return` movement; shelf +1; a second receive answers 409 |
+| 12 | Supervisor reads the closed follow-up | fitted 1 (field, with the photo), returned 1, test passed; stock = before − 1 |
+| 13 | Old-app path: a phone still on the current app (or the pilot phone before the pilot APK) completes the second follow-up with its part unsettled | status «بانتظار المراجعة», audit `REPAIR_COMPLETION_HELD_FOR_REVIEW` with the blockers, nothing counted as fitted |
+| 14 | Supervisor settles that part, then «اعتماد إغلاق الإصلاح» with the test result | refused while unsettled; closes after; nothing lost |
+
+**What the owner provides:** one Android phone signed in as عبدالكريم (Android 7+), with mobile data and
+permission for camera and notifications; the authorization for steps 1–6; the choice of the pilot stock item;
+the go-ahead for `eas build --profile pilot` (a cloud build on the `a_vix2` account).
+
+Blocker if the pilot channel cannot be used: no OTA to `preview` for the pilot — a percentage rollout is not a
+substitute.
