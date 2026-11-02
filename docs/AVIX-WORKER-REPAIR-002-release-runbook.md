@@ -1,6 +1,6 @@
 # AVIX-WORKER-REPAIR-002 — release runbook (AVIX Workers repair & parts)
 
-Status: **candidate, not deployed. NO-GO for general distribution; next step is the controlled pilot (§12).**
+Status: **server side deployed 2026-11-02 (§12.2): backend `c2de317`, `repair_0003`, AdminPortal `c25ba33`. App: pilot phone only; general OTA not authorized.**
 Prepared 2026-10-29; release gates re-checked 2026-10-30 (§8, §11); pilot readiness 2026-11-01 (§12). Nothing here has run on production; every production
 step needs its own authorization. Builds on AVIX-MAINTENANCE-REPAIR-001 (deployed 2026-10-28).
 
@@ -354,3 +354,22 @@ substitute.
 
 Not done (need the deploy window and explicit authorization): the fresh backup and its isolated restore (§3) —
 taken immediately before the migration, so a backup made today would be stale; steps 4–9.
+
+### 12.2 Executed 2026-11-02 (owner's authorization: backend `c2de317` + `repair_0003` + AdminPortal `c25ba33`)
+
+All times UTC; run timestamp `20261102-021241`.
+
+| Step | Result |
+|---|---|
+| Preconditions | backend `f0a2f37` clean; `repair_0002`; no transaction older than 30 s; `APP_DATABASE_URL` set; bundle and tar SHA-256 equal to `SHA256SUMS` on the server; `git bundle verify` exit 0 |
+| Backup | `backups/elms-db-20261102-021241-preWRP002.dump` (28.5 MB); `pg_restore --list` has TABLE DATA for `work_orders`, `part_requirements`, `inventory_movements`, `audit_logs`, `work_order_repair_requests` |
+| Isolated restore | `elms_restore_check_20261102_021241`: exit 0; restored = live: `repair_0002`, companies 4, work_orders 5,561, part_requirements 0, inventory_movements 0, audit_logs 514,366, repair requests 2, maintenance_contracts 612; dropped |
+| Rollback material | `backups/{server,client}-ELMS-20261102-021241-preWRP002.tar.gz`; images `elms-{api,worker,web}-rollback:pre-wrp002-20261102-021241`; line in `server-rollback.log` |
+| Backend code | `release/avix-worker-repair-002` fetched from the bundle; HEAD `c2de317`, 7 over `f0a2f37`, clean; api/worker images built while the old ones served |
+| Migration | `alembic upgrade head` from the new image with `lock_timeout=5s`, `statement_timeout=60s`: `repair_0002 -> repair_0003` first try; `part_return_requests` RLS t/t, 1 policy, `elms_app` SELECT/INSERT/UPDATE/DELETE (the migration's grant, same as every tenant table and the default ACL), 0 rows |
+| Backend up | `up -d --no-deps api worker`; health `healthy` inside and on `api.hensline.com`; new routes answer 401 unauthenticated (not 404); 0 5xx / tracebacks in the first minutes |
+| AdminPortal | live tree re-checked = `bbcc36d` (+ `.env`) right before; tar SHA-256 OK; archive deploy of `c25ba33`; web rebuilt; bundle has «طلبات الإرجاع» and «اعتماد إغلاق الإصلاح»; `admin.hensline.com` 200 |
+| CUS1002 on the new backend | `my-tasks` for عبدالكريم, called in the api container with commit disabled and rolled back: `WO1002-1-1-T1`, `corrective_maintenance`, `assigned`, `is_repair_follow_up: true`, parent `WO1002-1-1-2`, `parts_readiness: none` — the pilot APK (`950855b0`) files it under «تركيب». The owner's request `4bb1189a` untouched |
+
+Not done: no OTA, nothing merged or pushed, no part requirement / stock issue on the pilot job, the job not
+started or closed. Next: the pilot APK on عبدالكريم's phone (install over, data kept), then §12 steps 7–9.
