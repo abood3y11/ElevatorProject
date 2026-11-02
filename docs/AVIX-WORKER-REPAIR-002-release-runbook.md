@@ -16,7 +16,7 @@ Built from what production runs, never from `main`:
 |---|---|---|---|---|
 | Backend (`server-ELMS`) | `f0a2f37` | `release/avix-worker-repair-002` | `c2de317` | 7 (below) |
 | AdminPortal (`client-ELMS`) | `bbcc36d` (deployed 2026-10-29, sticky filters) | `release/avix-worker-repair-002` | `c25ba33` | 2 |
-| AVIX Workers (OTA, runtime `2.0.0`, branch `preview`) | `65256605` — update group `3d4d4952-85d9-4916-b069-3beca650fdf0`, read from EAS 2026-10-30 | `release/avix-worker-repair-002` | `94f0d6de` | 5 |
+| AVIX Workers (OTA, runtime `2.0.0`, branch `preview`) | `65256605` — update group `3d4d4952-85d9-4916-b069-3beca650fdf0`, read from EAS 2026-10-30 | `release/avix-worker-repair-002` | `91f599b7` | 6 (`94f0d6de` + the «تركيب» filing, §12) |
 | Database | `repair_0002` | — | `repair_0003` | 1 migration |
 
 Backend commits (cherry-picked with `-x` from `feature/worker-repair-parts`; the code is byte-identical to it):
@@ -283,8 +283,16 @@ completed visit `WO1002-1-1-2` (2026-10-22, by the same technician). It already 
 request of 2026-10-29 («تاكل الحبال», not covered, waiting for the customer) — leave it alone; the pilot uses its
 own request.
 
-**Targeting one phone.** The pilot APK is built from local branch `pilot/avix-worker-repair-002` (`0c7c6acb` =
-`94f0d6de` + an `eas.json` profile `pilot` that extends `preview` with channel `pilot`): `eas build --platform
+**Filing (owner decision 2026-11-02, app `91f599b7`).** No separate «إصلاح وتركيب قطع» chip: a repair follow-up
+(`is_repair_follow_up` from my-tasks) files under «تركيب» beside new-lift projects, card «تركيب - إصلاح وتركيب
+قطع»; its job screen names the type «إصلاح وتركيب قطع الغيار», drops the routine checklist and has no installation
+stages. Server type stays `corrective_maintenance`. `f0a2f37` does not send the flag, so before step 4 every
+follow-up shows under «صيانة» on every app.
+
+**Targeting one phone.** The pilot APK is built from local branch `pilot/avix-worker-repair-002` (`950855b0` =
+`0c7c6acb` (`94f0d6de` + an `eas.json` profile `pilot` that extends `preview` with channel `pilot`) + `91f599b7`;
+EAS build `44182cd0`, SHA-256 `8b15b7df…cd6a0`, in `C:\Dev\AVIX-Releases`; the earlier `0c7c6acb` APK is
+superseded): `eas build --platform
 android --profile pilot`. Its embedded JS is the release itself, so the phone needs no OTA; the `pilot` channel maps
 to no branch, so nothing published on `preview` reaches it and nothing published for it reaches anyone else. EAS
 signs it with the same managed keystore (`b984da9f…`), so it installs over the current app. Back to normal: install
@@ -329,3 +337,20 @@ the go-ahead for `eas build --profile pilot` (a cloud build on the `a_vix2` acco
 
 Blocker if the pilot channel cannot be used: no OTA to `preview` for the pilot — a percentage rollout is not a
 substitute.
+
+### 12.1 Pre-flight, 2026-11-02 (read-only)
+
+| Check | Result |
+|---|---|
+| Production backend `/opt/elms/server-ELMS` | `f0a2f37`, clean tree; api/worker up 4 days; health `healthy` |
+| Production database `alembic_version` (`BEGIN READ ONLY`) | `repair_0002` |
+| Live AdminPortal tree vs `git archive bbcc36d` | 1,267 files byte-identical; only extra file is the server's `.env` (kept by deploys). Its `.git` (`ec1ff05`, 267 dirty) is not the live state — the portal ships by archive |
+| Server bundle | `git bundle verify` OK; head `c2de317`, prerequisite `f0a2f37`; 7 commits |
+| AdminPortal tar | identical to `git archive c25ba33` (SHA-256 `6a9a5088…cac3`); `bbcc36d` is an ancestor of `c25ba33` (sticky filters kept) |
+| Migration chain | single head: `repair_0003` → `repair_0002`; no other revision descends from `repair_0002` |
+| `SHA256SUMS` (release folder and APKs) | all OK |
+| VPS headroom | disk 77 GB free; RAM 7.9 GB (3.5 GB available) + 2 GB swap |
+| Old-app compatibility | verified locally on the candidate (§4, §8); re-checked on the live app at step 7 (checklist 13) |
+
+Not done (need the deploy window and explicit authorization): the fresh backup and its isolated restore (§3) —
+taken immediately before the migration, so a backup made today would be stale; steps 4–9.
