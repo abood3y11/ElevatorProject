@@ -1,5 +1,12 @@
 # ELMS Sales Module — A-to-Z Analysis
 
+> **Update 2026-11-23 — documents.** Sales quotes and contracts now export **Word + PDF from each
+> company's own Word template**; the shared `.xlsx` workbooks (`quote_template.xlsx`,
+> `contract_template.xlsx`), `app/sales/contract_document.py`, the xlsx cell fillers in
+> `quote_document.py` and the `document.xlsx` / `contract-document.xlsx` routes were removed.
+> Line references to those below are historical. Current flow: `docs/QUOTE_TEMPLATE_EXPORT.md`.
+
+
 **Date:** 2026-08-01
 **Scope:** the complete sales subsystem across all four surfaces — `backend/app/sales/`, `backend/app/technicians/controllers/sales.py`, `AdminPortal/src/pages/sales/`, `mobile-worker/src/screens/workstation/sales/` — plus persistence, migrations, tests, docs and deploy state.
 **Method:** six parallel analysis agents, one per slice (§1–§6 below). Every claim is cited `file:line` and was produced by reading source, not by running the system. The two highest-severity findings (S1, S2) were re-verified by hand against the code before being written down.
@@ -224,8 +231,8 @@ Auth on **all 9** endpoints: `Depends(get_current_user)` = JWT bearer (`backend/
 | --- | --- | --- | --- | --- | --- |
 | 1 | `GET /api/v1/sales/quotes` | `list_quotes` | `_ensure_sales_access` (SALES_ROLES) `quotes.py:166` | query `request_id: UUID?`, `status: str?` (alias of `status_filter`), `limit: int=50 [1..200]` | `{items: QuotePayload[], total: int}` `quotes.py:173` |
 | 2 | `GET /api/v1/sales/quotes/{quote_id}` | `get_quote` | same `quotes.py:182` | path UUID | `QuotePayload`; 404 `العرض غير موجود` |
-| 3 | `GET /api/v1/sales/quotes/{quote_id}/document.xlsx` | `quote_document_xlsx` | same `quotes.py:259` | path UUID | `StreamingResponse` xlsx + RFC-5987 `Content-Disposition`; 404 / 409 |
-| 4 | `GET /api/v1/sales/quotes/{quote_id}/document.pdf` | `quote_document_pdf` | same `quotes.py:282` | path UUID | `Response` pdf; 404 / 409 / **503** (no LibreOffice) / **502** (render error) `quotes.py:294-303` |
+| 3 | `GET /api/v1/sales/quotes/{quote_id}/document.docx` | `quote_document_docx` | `quotes.py` | path UUID | the company's Word quote (`build_quote_document`); the `.xlsx` route was removed 2026-11-23 |
+| 4 | `GET /api/v1/sales/quotes/{quote_id}/document.pdf` | `quote_document_pdf` | `quotes.py` | path UUID | that same .docx via LibreOffice; **503** no LibreOffice / **502** render error (Arabic, `app/sales/document_pdf.py`) |
 | 5 | `POST /api/v1/sales/quotes` (201) | `create_quote` | same `quotes.py:319` | `QuoteIn` | `QuotePayload`; 400 no items, 409 request not approved |
 | 6 | `PATCH /api/v1/sales/quotes/{quote_id}` | `update_quote` | same `quotes.py:484` | `QuoteIn` (full body, not partial) | `QuotePayload`; 404, 409 if `status == "accepted"` |
 | 7 | `POST /api/v1/sales/quotes/{quote_id}/send` | `send_quote` | same `quotes.py:568` | `QuoteSendIn {phone?}` | `QuotePayload`; 400 no phone, **502** on provider failure `quotes.py:648-652` |
@@ -373,7 +380,7 @@ Client-sent totals are always ignored/recomputed (schema comment `schema.py:383-
 | WhatsApp body | `_build_whatsapp_message` `quotes.py:536-557` | Free-text (not a Meta template): number, customer, **first 15** line items, discount, VAT line, total, payment terms, validity, notes. Sent via `WhatsAppService(db).send_text_message` (`backend/app/_shared/infra/whatsapp_service.py:549`), which never raises — always returns `{success, detail, ...}` (`whatsapp_service.py:616-624`). Free text only works inside the 24h Meta window. |
 | `AuditLog` rows, `entity_name="sales_quotes"` | `quotes.py:421-435, 524-532, 631-646, 691-700` | `CREATE`, `UPDATE`, `SEND_WHATSAPP` / `SEND_WHATSAPP_FAILED`, `STATUS_CHANGE`. `AuditLog.log` **commits internally** (`backend/app/users/models/audit.py:104-105`) — a second commit after the handler's own. These rows are what the request pipeline timeline renders (`backend/app/technicians/controllers/sales.py:626-651`). |
 | `AuditLog` for pricing | `pricing.py:176-184` | One `UPDATE` on `sales_default_prices` per bulk save, `entity_id = current_user.id` (**not** a price row id), `new_value={created,updated,total}`. |
-| xlsx generation | `quote_document.fill_quote_template` `backend/app/sales/quote_document.py:276-417` | openpyxl loads `templates/quote_template.xlsx` (override `QUOTE_TEMPLATE_PATH`), writes only input cells; derived cells stay Excel formulas. Cells: `B1` branch (رياض→الرياض else مكة المكرمة), `C1/D1/E1/F1` add-on booleans, `J12` date, `Q12` quote number, `E19/I20/R20` buyer, `F25..J30/F69` spec, `F29/D103` from settings, `B12` validity-days string swap, `B155-157` notes, `M150` total incl. VAT, `P150` Arabic words, payment rows 145-148 (unused rows cleared **and hidden**, `quote_document.py:231-252`), `apply_overrides` last (`:206-219`), then fit-to-width page setup. |
+| Document generation | `app/maintenance/services/contract_document.py` | **Changed 2026-11-23:** the company's own Word template (`build_quote_document` / `build_contract_document`); PDF = the same .docx converted. The xlsx workbook fillers described in earlier revisions of this audit were removed — see `docs/QUOTE_TEMPLATE_EXPORT.md`. |
 | PDF generation | `render_pdf` `quote_document.py:442-482` | Headless `soffice --convert-to pdf` in a temp dir with a private profile, 120 s timeout; binary found via `LIBREOFFICE_BIN`, PATH, or the Windows install dirs (`:423-439`). `LibreOfficeNotAvailable` → 503; other `RuntimeError` → 502. |
 | Company settings read | `_quote_defaults` `quotes.py:217-234` | `quote.speed`, `quote.warranty_period`, `quote.validity_days`, `company.name/owner/title/tax_number` via `CompanySettingsService` (`backend/app/settings/service.py:15,35,49`). |
 | Filename | `_content_disposition` `quotes.py:189-194` | ASCII fallback + RFC 5987 UTF-8 for `عرض سعر <اسم العميل>.{xlsx,pdf}`; customer name resolved from the real `Customer` row, falling back to contact/quote number (`quotes.py:237-248`). |
@@ -483,8 +490,8 @@ All paths below are relative to `/api/v1/technicians/sales`.
 | 5 | `POST /contract-requests/{id}/status` | `:684` | Generic status move + notes timeline append | `SalesContractStatusIn{status*, note, quoteAmount, surveyDate}` | `_request_payload` | sales access **+ owner-or-manager** (`:697`); `MANAGER_ONLY_STATUSES` gate (`:714`); edge map (`:722`) |
 | 6 | `POST /contract-requests/{id}/finance-decision` | `:770` | **LEGACY / unreachable** — always 409 | `RequestFinanceDecisionIn{decision*, note}` | `_request_payload` | `_ensure_finance_access` (`FINANCE_ROLES`) |
 | 7 | `POST /contract-requests/{id}/build-contract` | `:828` | **The single Contract-creation trigger** | `BuildContractIn` | `_request_payload` | `_is_sales_manager` only (`:845`) — no `_ensure_sales_access` call |
-| 8 | `GET /contract-requests/{id}/contract-document.xlsx` | `:1051` | Filled company contract xlsx | — | `StreamingResponse` xlsx, RFC-5987 Arabic filename | `_ensure_sales_access` |
-| 9 | `GET /contract-requests/{id}/contract-document.pdf` | `:1070` | Same via LibreOffice | — | `application/pdf`; **503** if LibreOffice missing, **502** on `RuntimeError` | `_ensure_sales_access` |
+| 8 | `GET /contract-requests/{id}/contract-document.docx` | `sales.py` | The company's Word contract (`build_contract_document`, by contract type) | — | .docx, RFC-5987 Arabic filename; **409** when no contract is built (the `.xlsx` route was removed 2026-11-23) | `_ensure_sales_access` |
+| 9 | `GET /contract-requests/{id}/contract-document.pdf` | `sales.py` | Same .docx via LibreOffice | — | `application/pdf`; **503** if LibreOffice missing, **502** on render failure, **409** without a contract | `_ensure_sales_access` |
 | 10 | `DELETE /contract-requests/{id}` | `:1104` | Hard delete the request | — | `{message, id}` | `_ensure_sales_access` **only — no owner/manager check** |
 | 11 | `POST /contract-requests/{id}/update` | `:1136` | Partial edit of the offer spec (+ optional status) | `SalesContractRequestUpdate` | `_request_payload` | sales access + owner-or-manager (`:1153`) + `status == "pending_review"` unless manager (`:1160`) |
 | 12 | `GET /contract-requests/{id}/calls` | `:1278` | Calls logged on the offer's lead (matched by phone) | — | `{items[_interaction_payload], total, leadId, canRegister}` | `_ensure_sales_access` |
