@@ -161,6 +161,28 @@ The portal's platform console has no field for it yet (API only).
 | Celery worker unaffected (no host involved) | ✓ | n/a |
 | Certificate renewal dry run covers both certs | `certbot renew --dry-run` | |
 
+### admin.mukarm.com — DONE 2026-11-26 (~19:51 UTC)
+
+Same AdminPortal as `admin.hensline.com`, no code change: the portal calls the
+API same-origin (`/api/v1`), and `admin` is a reserved label on both sides
+(`branding.ts`, `subdomain.py`), so it gets the platform's own login page.
+
+- DNS: `A admin → 92.113.31.218` in Vercel DNS (added by the owner).
+- New file `/etc/nginx/sites-available/mukarm-admin` (symlinked in `sites-enabled`):
+  port 80 → HTTPS + ACME path; port 443 with the same `/api/v1/`, `/ws/` and
+  portal (:8080) locations and 50m limit as `admin.hensline.com` (diffed: identical).
+- Separate certificate `admin.mukarm.com`, expires 2027-02-24, auto-renews;
+  `certbot renew --dry-run --cert-name admin.mukarm.com` succeeded.
+- Untouched: `sites-available/elms`, the `admin.hensline.com` certificate, `mukarm-api`.
+- Verified on both admin hosts: page 200 (same 4,313 bytes), JS bundle 200,
+  `/api/v1/health` 200, WebSocket without auth 403, each serves its own certificate.
+  Headless browser: `admin.mukarm.com/login` renders the RTL login form, no console
+  errors, no failed requests (first try hit a stale DNS answer pointing at Vercel;
+  fine a minute later — record TTL is 10 minutes).
+- Users log in once per host (the session is stored per origin). No redirect
+  between the two admin hosts.
+- Rollback: `rm /etc/nginx/sites-enabled/mukarm-admin && nginx -t && systemctl reload nginx`.
+
 ## 6. Side observations (not touched, outside this task)
 
 - `server-ELMS/.env` has `ENVIRONMENT=development` on the production server.
